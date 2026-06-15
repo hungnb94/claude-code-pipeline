@@ -26,7 +26,7 @@ A self-contained directory distributed via git that extends Claude Code with ski
 The file at `.claude-plugin/plugin.json` that defines the plugin's `name`, `description`, and `version`. The `name` field determines the skill namespace prefix (e.g., `name: "pipeline"` → skill `/pipeline:run`).
 
 ### Plugin Root
-The directory where Claude Code installs a plugin. Referenced in hook commands via `${CLAUDE_PLUGIN_ROOT}`. Changes on plugin updates — persistent data should use `${CLAUDE_PLUGIN_DATA}` instead.
+The directory where Claude Code installs a plugin. `${CLAUDE_PLUGIN_ROOT}` appears in `hooks/hooks.json` as the path to the hook executable (e.g. `node ${CLAUDE_PLUGIN_ROOT}/hooks/check_pipeline.js`). Inside hook scripts, project-relative paths are resolved via `CLAUDE_PROJECT_DIR` (the user's project root), not `${CLAUDE_PLUGIN_ROOT}`.
 
 ### Continuation
 The mechanism by which subsequent steps are driven after step 1. The `Stop` hook detects an active pipeline (`mode === "pipeline"`), reads the current step from state, renders its prompt, and injects it — causing Claude to execute the next step without user intervention.

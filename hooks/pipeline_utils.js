@@ -120,7 +120,7 @@ function buildAgentUpdateBlock(sessionId, stepName, next) {
     : `sess['mode'] = 'free'`;
   const py = [
     `import json; from pathlib import Path`,
-    `p = Path('.pipeline/state.json')`,
+    `p = Path('${escapeForPython(STATE_PATH)}')`,
     `s = json.loads(p.read_text())`,
     `sess = s['${sid}']`,
     `sess['completed_steps'].append('${sname}')`,
@@ -143,7 +143,7 @@ function buildShellUpdateBlock(sessionId, stepName, next, nextFail) {
   const nextFailSafe = nextFail ? escapeForPython(nextFail) : '';
   const baseLines = [
     `import json; from pathlib import Path`,
-    `p = Path('.pipeline/state.json')`,
+    `p = Path('${escapeForPython(STATE_PATH)}')`,
     `s = json.loads(p.read_text())`,
     `sess = s['${sid}']`,
     `sess['completed_steps'].append('${sname}')`,

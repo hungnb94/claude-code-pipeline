@@ -68,6 +68,11 @@ process.stdin.on('end', () => {
     process.exit(1);
   }
 
+  if (entryStep.terminal) {
+    process.stdout.write(`Pipeline initialized from '${pipelineFile}' but entry step '${config.entry}' is terminal — pipeline complete.\n`);
+    process.exit(0);
+  }
+
   setSessionState(sessionId, {
     mode: 'pipeline',
     pipeline: pipelineFile,

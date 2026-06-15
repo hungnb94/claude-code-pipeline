@@ -27,6 +27,6 @@ Use the **native Claude Code plugin format**.
 
 ## Consequences
 
-- Hook scripts reference paths via `${CLAUDE_PLUGIN_ROOT}` — cannot use relative paths.
+- `hooks/hooks.json` uses `${CLAUDE_PLUGIN_ROOT}` to locate the hook executable (e.g. `node ${CLAUDE_PLUGIN_ROOT}/hooks/check_pipeline.js`). Inside the hook scripts, project-relative paths are resolved using `CLAUDE_PROJECT_DIR`, which Claude Code sets to the user's project root when invoking hooks.
 - Skills are namespaced: `/pipeline:run` instead of `/run-pipeline`. This is a breaking change for existing users of the standalone configuration.
 - Distribution is git-first (`/plugin install github:hungnb94/claude-code-pipeline`). Community marketplace submission is a separate future step.
