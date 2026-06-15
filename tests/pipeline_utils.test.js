@@ -135,6 +135,29 @@ describe('buildShellUpdateBlock', () => {
   });
 });
 
+describe('default pipeline routing', () => {
+  const fs = require('fs');
+  const path = require('path');
+
+  it('verify routes to bump_version on success', () => {
+    const yaml = fs.readFileSync(
+      path.resolve(__dirname, '../.pipeline/pipeline.yaml'),
+      'utf8'
+    );
+    const pipeline = parseYAML(yaml);
+    expect(pipeline.steps.verify.next).toBe('bump_version');
+  });
+
+  it('bump_version routes to pr', () => {
+    const yaml = fs.readFileSync(
+      path.resolve(__dirname, '../.pipeline/pipeline.yaml'),
+      'utf8'
+    );
+    const pipeline = parseYAML(yaml);
+    expect(pipeline.steps.bump_version.next).toBe('pr');
+  });
+});
+
 describe('buildProgressHeader', () => {
   it('shows only current step when no steps completed', () => {
     expect(buildProgressHeader([], 'plan')).toBe('🔄 plan');
