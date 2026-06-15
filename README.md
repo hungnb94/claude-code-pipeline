@@ -2,6 +2,8 @@
 
 A Claude Code plugin that lets you define multi-step automated pipelines in YAML and run them with a single command. Claude executes each step in sequence — agent steps run prompts, shell steps run bash commands — and the pipeline advances automatically after each step without user intervention.
 
+![Claude Code Pipeline — automate your code quality workflow with Claude Code](imgs/illustration.png)
+
 ## Requirements
 
 - Claude Code v2.1+ (with plugin support)
