@@ -156,6 +156,15 @@ describe('default pipeline routing', () => {
     const pipeline = parseYAML(yaml);
     expect(pipeline.steps.bump_version.next).toBe('pr');
   });
+
+  it('fix_code routes to bump_version (failure path also bumps version)', () => {
+    const yaml = fs.readFileSync(
+      path.resolve(__dirname, '../.pipeline/pipeline.yaml'),
+      'utf8'
+    );
+    const pipeline = parseYAML(yaml);
+    expect(pipeline.steps.fix_code.next).toBe('bump_version');
+  });
 });
 
 describe('buildProgressHeader', () => {

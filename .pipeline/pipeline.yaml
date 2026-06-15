@@ -52,10 +52,11 @@ steps:
 
       Steps:
       1. Read the current version from package.json
-      2. Review the changes (git diff main, commit messages, or implementation plan) to understand what was done
+      2. Run `git diff main --name-only` to see which files changed, then read the commit messages with `git log main..HEAD --oneline` to understand what was done
       3. Choose the appropriate bump level and justify it in one sentence
       4. Update the version field in both package.json and .claude-plugin/plugin.json to the new version
     next: pr
+    max_visits: 3
 
   pr:
     type: agent
