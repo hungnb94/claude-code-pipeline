@@ -151,13 +151,13 @@ describe('default pipeline routing', () => {
   const fs = require('fs');
   const path = require('path');
 
-  it('verify routes to bump_version on success', () => {
+  it('verify routes to lint on success', () => {
     const yaml = fs.readFileSync(
       path.resolve(__dirname, '../.pipeline/pipeline.yaml'),
       'utf8'
     );
     const pipeline = parseYAML(yaml);
-    expect(pipeline.steps.verify.next).toBe('bump_version');
+    expect(pipeline.steps.verify.next).toBe('lint');
   });
 
   it('bump_version routes to pr', () => {
@@ -169,13 +169,13 @@ describe('default pipeline routing', () => {
     expect(pipeline.steps.bump_version.next).toBe('pr');
   });
 
-  it('fix_code routes to bump_version (failure path also bumps version)', () => {
+  it('fix_code routes to lint (goes through lint before bumping version)', () => {
     const yaml = fs.readFileSync(
       path.resolve(__dirname, '../.pipeline/pipeline.yaml'),
       'utf8'
     );
     const pipeline = parseYAML(yaml);
-    expect(pipeline.steps.fix_code.next).toBe('bump_version');
+    expect(pipeline.steps.fix_code.next).toBe('lint');
   });
 });
 

@@ -29,7 +29,7 @@ steps:
     type: shell
     commands:
       - yarn test
-    next: bump_version
+    next: lint
     next_fail: fix_code
     max_visits: 5
 
@@ -38,7 +38,21 @@ steps:
     prompt: |
       Fix the errors below. Only touch related files.
       Errors: {{verify_output}}
+    next: lint
+
+  lint:
+    type: shell
+    commands:
+      - npm run lint
     next: bump_version
+    next_fail: fix_lint
+    max_visits: 3
+
+  fix_lint:
+    type: agent
+    prompt: |
+      Run `npm run lint` to see current lint errors. Fix all violations. Only touch files with errors. Do not change logic.
+    next: lint
 
   bump_version:
     type: agent
