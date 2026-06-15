@@ -4,16 +4,15 @@ steps:
   clarify:
     type: agent
     prompt: |
-      Requirement: {{requirement}}
       Read the codebase and identify scope, dependencies, and clarified requirement.
-      Output format: PASS: [clarified requirement]
+    next: plan
 
   plan:
     type: agent
     prompt: |
-      Requirement: {{clarify_output}}
       Write a step-by-step implementation plan.
-      Reply: PASS: [numbered steps]
+      Context: {{clarify_output}}
+    next: execute
 
   execute:
     type: agent
@@ -44,11 +43,10 @@ steps:
     type: agent
     prompt: |
       Review the implementation for correctness, security, and code quality.
-      Reply PASS if acceptable, or FAIL: [specific issues with file:line references]
     next: done
-    next_fail: fix_code
 
   done:
     type: agent
     prompt: |
       Session complete. Summarize what was implemented and update docs.
+    terminal: true
