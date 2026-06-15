@@ -3,19 +3,28 @@
 const fs = require('fs');
 const path = require('path');
 const {
-  parseYAML, render,
-  getSessionState, setSessionState,
-  buildAgentUpdateBlock, buildShellUpdateBlock,
+  parseYAML,
+  render,
+  getSessionState,
+  setSessionState,
+  buildAgentUpdateBlock,
+  buildShellUpdateBlock,
   buildProgressHeader,
   PROJECT_ROOT,
 } = require('./pipeline_utils.js');
 
 let raw = '';
 process.stdin.setEncoding('utf8');
-process.stdin.on('data', chunk => { raw += chunk; });
+process.stdin.on('data', (chunk) => {
+  raw += chunk;
+});
 process.stdin.on('end', () => {
   let data;
-  try { data = JSON.parse(raw); } catch { process.exit(0); }
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    process.exit(0);
+  }
 
   const sessionId = data.session_id || '';
   if (!sessionId) process.exit(0);
@@ -23,11 +32,18 @@ process.stdin.on('end', () => {
   const state = getSessionState(sessionId);
   if (!state || state.mode !== 'pipeline') process.exit(0);
 
-  const pipelinePath = path.join(PROJECT_ROOT, state.pipeline || '.pipeline/pipeline.yaml');
+  const pipelinePath = path.join(
+    PROJECT_ROOT,
+    state.pipeline || '.pipeline/pipeline.yaml'
+  );
   if (!fs.existsSync(pipelinePath)) process.exit(0);
 
   let config;
-  try { config = parseYAML(fs.readFileSync(pipelinePath, 'utf8')); } catch { process.exit(0); }
+  try {
+    config = parseYAML(fs.readFileSync(pipelinePath, 'utf8'));
+  } catch {
+    process.exit(0);
+  }
 
   const current = state.current_step || '';
   const step = (config.steps || {})[current] || null;
@@ -55,12 +71,17 @@ process.stdin.on('end', () => {
 
   let output;
   if (stepType === 'shell') {
-    const cmds = (step.commands || []).map(c => `  ${c}`).join('\n');
+    const cmds = (step.commands || []).map((c) => `  ${c}`).join('\n');
     output =
       `${header}\n\n` +
       `Pipeline active — current step: '${current}' (type=shell).\n\n` +
       `Run these commands in sequence:\n${cmds}\n\n` +
-      buildShellUpdateBlock(sessionId, current, step.next || '', step.next_fail || '');
+      buildShellUpdateBlock(
+        sessionId,
+        current,
+        step.next || '',
+        step.next_fail || ''
+      );
   } else {
     const prompt = render(step.prompt || '', sharedState);
     output =

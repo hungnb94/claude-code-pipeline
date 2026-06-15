@@ -29,7 +29,8 @@ function buildEntry(data) {
     case 'PostToolUse':
       entry.tool = data.tool_name;
       entry.exit_code = data.tool_output?.exit_code;
-      if (data.tool_output?.stderr) entry.stderr = truncate(data.tool_output.stderr, 200);
+      if (data.tool_output?.stderr)
+        entry.stderr = truncate(data.tool_output.stderr, 200);
       break;
     case 'UserPromptSubmit':
       entry.prompt = data.prompt ? truncate(data.prompt) : undefined;
@@ -44,7 +45,9 @@ function buildEntry(data) {
 
 let raw = '';
 process.stdin.setEncoding('utf8');
-process.stdin.on('data', chunk => { raw += chunk; });
+process.stdin.on('data', (chunk) => {
+  raw += chunk;
+});
 process.stdin.on('end', () => {
   try {
     const data = JSON.parse(raw);

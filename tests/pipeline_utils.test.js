@@ -3,7 +3,13 @@ const path = require('path');
 // Must be set before requiring pipeline_utils.js so the CLAUDE_PROJECT_DIR guard doesn't fire.
 process.env.CLAUDE_PROJECT_DIR = path.resolve(__dirname, '..');
 
-const { parseYAML, render, buildAgentUpdateBlock, buildShellUpdateBlock, buildProgressHeader } = require('../hooks/pipeline_utils.js');
+const {
+  parseYAML,
+  render,
+  buildAgentUpdateBlock,
+  buildShellUpdateBlock,
+  buildProgressHeader,
+} = require('../hooks/pipeline_utils.js');
 
 describe('parseYAML', () => {
   it('parses a minimal pipeline with entry and steps', () => {
@@ -74,13 +80,19 @@ steps:
       - yarn typecheck
 `;
     const result = parseYAML(yaml);
-    expect(result.steps.verify.commands).toEqual(['yarn test', 'yarn lint', 'yarn typecheck']);
+    expect(result.steps.verify.commands).toEqual([
+      'yarn test',
+      'yarn lint',
+      'yarn typecheck',
+    ]);
   });
 });
 
 describe('render', () => {
   it('replaces known placeholders with shared state values', () => {
-    const result = render('Context: {{clarify_output}}', { clarify_output: 'use postgres' });
+    const result = render('Context: {{clarify_output}}', {
+      clarify_output: 'use postgres',
+    });
     expect(result).toBe('Context: use postgres');
   });
 
@@ -173,18 +185,19 @@ describe('buildProgressHeader', () => {
   });
 
   it('shows completed steps before current step', () => {
-    expect(buildProgressHeader(['plan', 'review'], 'implement'))
-      .toBe('✅ plan → ✅ review → 🔄 implement');
+    expect(buildProgressHeader(['plan', 'review'], 'implement')).toBe(
+      '✅ plan → ✅ review → 🔄 implement'
+    );
   });
 
   it('shows single completed step before current step', () => {
-    expect(buildProgressHeader(['plan'], 'review'))
-      .toBe('✅ plan → 🔄 review');
+    expect(buildProgressHeader(['plan'], 'review')).toBe('✅ plan → 🔄 review');
   });
 
   it('handles repeated step names from cycles', () => {
-    expect(buildProgressHeader(['verify', 'fix', 'verify'], 'fix'))
-      .toBe('✅ verify → ✅ fix → ✅ verify → 🔄 fix');
+    expect(buildProgressHeader(['verify', 'fix', 'verify'], 'fix')).toBe(
+      '✅ verify → ✅ fix → ✅ verify → 🔄 fix'
+    );
   });
 
   it('treats missing completedSteps as empty', () => {

@@ -73,37 +73,57 @@ describe('trigger_pipeline.js', () => {
 
   // ── Test 3: path traversal ───────────────────────────────────────────────
   it('exits 1 with error message on path traversal attempt', () => {
-    const result = runHook('/pipeline:run ../../../etc/passwd.yaml', SESSION_ID);
+    const result = runHook(
+      '/pipeline:run ../../../etc/passwd.yaml',
+      SESSION_ID
+    );
 
     expect(result.status).toBe(1);
-    expect(result.stdout).toContain('Pipeline file must be within the project root');
+    expect(result.stdout).toContain(
+      'Pipeline file must be within the project root'
+    );
     expect(readSessionState(SESSION_ID)).toBeNull();
   });
 
   // ── Test 4: missing entry field ──────────────────────────────────────────
   it('exits 1 when YAML is missing the entry field', () => {
-    const result = runHook('/pipeline:run tests/fixtures/missing-entry.yaml', SESSION_ID);
+    const result = runHook(
+      '/pipeline:run tests/fixtures/missing-entry.yaml',
+      SESSION_ID
+    );
 
     expect(result.status).toBe(1);
-    expect(result.stdout).toContain("Invalid pipeline: missing 'entry' or 'steps'");
+    expect(result.stdout).toContain(
+      "Invalid pipeline: missing 'entry' or 'steps'"
+    );
     expect(readSessionState(SESSION_ID)).toBeNull();
   });
 
   // ── Test 5: missing steps field ──────────────────────────────────────────
   it('exits 1 when YAML is missing the steps field', () => {
-    const result = runHook('/pipeline:run tests/fixtures/missing-steps.yaml', SESSION_ID);
+    const result = runHook(
+      '/pipeline:run tests/fixtures/missing-steps.yaml',
+      SESSION_ID
+    );
 
     expect(result.status).toBe(1);
-    expect(result.stdout).toContain("Invalid pipeline: missing 'entry' or 'steps'");
+    expect(result.stdout).toContain(
+      "Invalid pipeline: missing 'entry' or 'steps'"
+    );
     expect(readSessionState(SESSION_ID)).toBeNull();
   });
 
   // ── Test 6: bad entry reference ──────────────────────────────────────────
   it('exits 1 when entry step name is not defined in steps', () => {
-    const result = runHook('/pipeline:run tests/fixtures/bad-entry-ref.yaml', SESSION_ID);
+    const result = runHook(
+      '/pipeline:run tests/fixtures/bad-entry-ref.yaml',
+      SESSION_ID
+    );
 
     expect(result.status).toBe(1);
-    expect(result.stdout).toContain("Entry step 'nonexistent' not found in steps");
+    expect(result.stdout).toContain(
+      "Entry step 'nonexistent' not found in steps"
+    );
     expect(readSessionState(SESSION_ID)).toBeNull();
   });
 
@@ -112,7 +132,9 @@ describe('trigger_pipeline.js', () => {
     const result = runHook('/pipeline:run', SESSION_ID);
 
     expect(result.status).toBe(0);
-    expect(result.stdout).toContain("Pipeline initialized from '.pipeline/pipeline.yaml'");
+    expect(result.stdout).toContain(
+      "Pipeline initialized from '.pipeline/pipeline.yaml'"
+    );
     expect(result.stdout).toContain("Pipeline step: 'plan'");
     expect(result.stdout).toContain('🔄 plan');
     expect(result.stderr).toContain('🔄 plan');
@@ -132,7 +154,9 @@ describe('trigger_pipeline.js', () => {
     const result = runHook('/pipeline:run examples/pipeline.yaml', SESSION_ID);
 
     expect(result.status).toBe(0);
-    expect(result.stdout).toContain("Pipeline initialized from 'examples/pipeline.yaml'");
+    expect(result.stdout).toContain(
+      "Pipeline initialized from 'examples/pipeline.yaml'"
+    );
     expect(result.stdout).toContain("Pipeline step: 'clarify'");
     expect(result.stdout).toContain('🔄 clarify');
     expect(result.stderr).toContain('🔄 clarify');
@@ -149,32 +173,51 @@ describe('trigger_pipeline.js', () => {
 
   // ── Test 9: inline requirements, no explicit path ────────────────────────
   it('stores inline requirements in shared_state when no yaml path given', () => {
-    const result = runHook('/pipeline:run Add authentication to the app', SESSION_ID);
+    const result = runHook(
+      '/pipeline:run Add authentication to the app',
+      SESSION_ID
+    );
 
     expect(result.status).toBe(0);
-    expect(result.stdout).toContain("Pipeline initialized from '.pipeline/pipeline.yaml'");
+    expect(result.stdout).toContain(
+      "Pipeline initialized from '.pipeline/pipeline.yaml'"
+    );
 
     const state = readSessionState(SESSION_ID);
-    expect(state.shared_state).toEqual({ user_requirements: 'Add authentication to the app' });
+    expect(state.shared_state).toEqual({
+      user_requirements: 'Add authentication to the app',
+    });
   });
 
   // ── Test 10: inline requirements with explicit yaml path ─────────────────
   it('stores inline requirements in shared_state when explicit yaml path given', () => {
-    const result = runHook('/pipeline:run examples/pipeline.yaml Add authentication to the app', SESSION_ID);
+    const result = runHook(
+      '/pipeline:run examples/pipeline.yaml Add authentication to the app',
+      SESSION_ID
+    );
 
     expect(result.status).toBe(0);
-    expect(result.stdout).toContain("Pipeline initialized from 'examples/pipeline.yaml'");
+    expect(result.stdout).toContain(
+      "Pipeline initialized from 'examples/pipeline.yaml'"
+    );
 
     const state = readSessionState(SESSION_ID);
     expect(state.pipeline).toBe('examples/pipeline.yaml');
-    expect(state.shared_state).toEqual({ user_requirements: 'Add authentication to the app' });
+    expect(state.shared_state).toEqual({
+      user_requirements: 'Add authentication to the app',
+    });
   });
 
   // ── Test 11: requirements rendered in entry step prompt ──────────────────
   it('renders user_requirements in entry step prompt output', () => {
-    const result = runHook('/pipeline:run tests/fixtures/requirements-entry.yaml Add authentication to the app', SESSION_ID);
+    const result = runHook(
+      '/pipeline:run tests/fixtures/requirements-entry.yaml Add authentication to the app',
+      SESSION_ID
+    );
 
     expect(result.status).toBe(0);
-    expect(result.stdout).toContain('Implement the following: Add authentication to the app');
+    expect(result.stdout).toContain(
+      'Implement the following: Add authentication to the app'
+    );
   });
 });

@@ -20,7 +20,9 @@ function runHook(sessionId) {
 function setSessionState(sessionId, state) {
   let all = {};
   if (fs.existsSync(STATE_PATH)) {
-    try { all = JSON.parse(fs.readFileSync(STATE_PATH, 'utf8')); } catch {}
+    try {
+      all = JSON.parse(fs.readFileSync(STATE_PATH, 'utf8'));
+    } catch {}
   }
   all[sessionId] = state;
   fs.mkdirSync(path.dirname(STATE_PATH), { recursive: true });
@@ -39,8 +41,12 @@ function cleanupSession(sessionId) {
 describe('check_pipeline.js', () => {
   let SESSION_ID;
 
-  beforeEach(() => { SESSION_ID = randomUUID(); });
-  afterEach(() => { cleanupSession(SESSION_ID); });
+  beforeEach(() => {
+    SESSION_ID = randomUUID();
+  });
+  afterEach(() => {
+    cleanupSession(SESSION_ID);
+  });
 
   it('exits 0 and writes nothing when session has no state', () => {
     const result = runHook(SESSION_ID);
@@ -75,7 +81,9 @@ describe('check_pipeline.js', () => {
     expect(result.status).toBe(2);
     expect(result.stdout).toContain('🔄 plan');
     expect(result.stderr).toContain('🔄 plan');
-    expect(result.stdout).toContain("Pipeline active — current step: 'plan' (type=agent)");
+    expect(result.stdout).toContain(
+      "Pipeline active — current step: 'plan' (type=agent)"
+    );
     expect(result.stdout).toContain('/writing-plans');
   });
 
@@ -90,9 +98,15 @@ describe('check_pipeline.js', () => {
     });
     const result = runHook(SESSION_ID);
     expect(result.status).toBe(2);
-    expect(result.stdout).toContain('✅ plan → ✅ review_plan → ✅ implementation → ✅ docs → 🔄 verify');
-    expect(result.stderr).toContain('✅ plan → ✅ review_plan → ✅ implementation → ✅ docs → 🔄 verify');
-    expect(result.stdout).toContain("Pipeline active — current step: 'verify' (type=shell)");
+    expect(result.stdout).toContain(
+      '✅ plan → ✅ review_plan → ✅ implementation → ✅ docs → 🔄 verify'
+    );
+    expect(result.stderr).toContain(
+      '✅ plan → ✅ review_plan → ✅ implementation → ✅ docs → 🔄 verify'
+    );
+    expect(result.stdout).toContain(
+      "Pipeline active — current step: 'verify' (type=shell)"
+    );
     expect(result.stdout).toContain('yarn test');
   });
 
@@ -107,8 +121,8 @@ describe('check_pipeline.js', () => {
     });
     const result = runHook(SESSION_ID);
     expect(result.status).toBe(2);
-    expect(result.stdout).toContain("max_visits");
-    expect(result.stdout).toContain("Pipeline error");
+    expect(result.stdout).toContain('max_visits');
+    expect(result.stdout).toContain('Pipeline error');
   });
 
   it('exits 0 and sets mode=free when current step has terminal:true', () => {
