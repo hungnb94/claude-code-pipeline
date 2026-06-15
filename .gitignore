@@ -1,0 +1,7 @@
+.idea
+*.log
+node_modules/
+package-lock.json
+
+.pipeline/state.json
+.claude/worktrees

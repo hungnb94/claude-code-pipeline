@@ -1,0 +1,49 @@
+entry: clarify
+
+steps:
+  clarify:
+    type: agent
+    prompt: |
+      Read the codebase and identify scope, dependencies, and clarified requirement.
+    next: plan
+
+  plan:
+    type: agent
+    prompt: |
+      Write a step-by-step implementation plan.
+      Context: {{clarify_output}}
+    next: execute
+
+  execute:
+    type: agent
+    prompt: |
+      Implement the following plan exactly.
+      Plan: {{plan_output}}
+    next: verify
+
+  verify:
+    type: shell
+    commands:
+      - yarn test
+      - yarn lint
+    next: review
+    next_fail: fix_code
+    max_visits: 5
+
+  fix_code:
+    type: agent
+    prompt: |
+      Fix the errors below. Only touch related files.
+      Errors: {{verify_output}}
+    next: verify
+
+  review:
+    type: agent
+    prompt: |
+      Review the implementation for correctness, security, and code quality.
+    next: done
+
+  done:
+    type: agent
+    prompt: |
+      Session complete. Summarize what was implemented and update docs.
