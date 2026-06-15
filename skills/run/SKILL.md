@@ -9,10 +9,20 @@ Runs a pipeline defined in a YAML file. The pipeline executes steps automaticall
 ## Usage
 
 ```
-/pipeline:run [path/to/pipeline.yaml]
+/pipeline:run [path/to/pipeline.yaml] [requirements text]
 ```
 
-If no path is provided, defaults to `.pipeline/pipeline.yaml` in the current project.
+- `path/to/pipeline.yaml` — optional; defaults to `.pipeline/pipeline.yaml`
+- `requirements text` — optional inline text stored as `{{user_requirements}}` in pipeline shared state
+
+**Examples:**
+
+```
+/pipeline:run
+/pipeline:run examples/pipeline.yaml
+/pipeline:run Add authentication with JWT tokens
+/pipeline:run examples/pipeline.yaml Add authentication with JWT tokens
+```
 
 ## What happens
 
