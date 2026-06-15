@@ -4,7 +4,7 @@ steps:
   plan:
     type: agent
     prompt: |
-      /writing-plans writing a step-by-step implementation plan.
+      Writing a step-by-step implementation plan.
     next: review_plan
 
   review_plan:
@@ -28,17 +28,32 @@ steps:
   verify:
     type: shell
     commands:
-      - yarn test
-    next: bump_version
+      - npm test
+    next: lint
     next_fail: fix_code
-    max_visits: 5
+    max_visits: 9
 
   fix_code:
     type: agent
     prompt: |
       Fix the errors below. Only touch related files.
       Errors: {{verify_output}}
+    next: verify
+
+  lint:
+    type: shell
+    commands:
+      - npm run lint
     next: bump_version
+    next_fail: fix_lint
+    max_visits: 9
+
+  fix_lint:
+    type: agent
+    prompt: |
+      Run `npm run lint` to see current lint errors. Fix all violations. Only touch files with errors. Do not change logic. After fixing, run `npm run format` to apply Prettier formatting.
+    next: verify
+    max_visits: 9
 
   bump_version:
     type: agent
@@ -52,11 +67,12 @@ steps:
 
       Steps:
       1. Read the current version from package.json
-      2. Run `git diff main --name-only` to see which files changed, then read the commit messages with `git log main..HEAD --oneline` to understand what was done
-      3. Choose the appropriate bump level and justify it in one sentence
-      4. Update the version field in both package.json and .claude-plugin/plugin.json to the new version
+      2. Run `git diff origin/main -- package.json` and check if the version field already differs from main. If it does, the version was already bumped in a previous pipeline run on this branch — skip the bump and output "version already bumped on this branch".
+      3. Run `git diff main --name-only` to see which files changed, then read the commit messages with `git log main..HEAD --oneline` to understand what was done
+      4. Choose the appropriate bump level and justify it in one sentence
+      5. Update the version field in both package.json and .claude-plugin/plugin.json to the new version
     next: pr
-    max_visits: 3
+    max_visits: 1
 
   pr:
     type: agent

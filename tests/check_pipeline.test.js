@@ -20,7 +20,11 @@ function runHook(sessionId) {
 function setSessionState(sessionId, state) {
   let all = {};
   if (fs.existsSync(STATE_PATH)) {
-    try { all = JSON.parse(fs.readFileSync(STATE_PATH, 'utf8')); } catch {}
+    try {
+      all = JSON.parse(fs.readFileSync(STATE_PATH, 'utf8'));
+    } catch {
+      // ignore parse errors on corrupt state file
+    }
   }
   all[sessionId] = state;
   fs.mkdirSync(path.dirname(STATE_PATH), { recursive: true });
@@ -28,19 +32,27 @@ function setSessionState(sessionId, state) {
 }
 
 function cleanupSession(sessionId) {
-  if (!fs.existsSync(STATE_PATH)) return;
+  if (!fs.existsSync(STATE_PATH)) {
+    return;
+  }
   try {
     const all = JSON.parse(fs.readFileSync(STATE_PATH, 'utf8'));
     delete all[sessionId];
     fs.writeFileSync(STATE_PATH, JSON.stringify(all, null, 2));
-  } catch {}
+  } catch {
+    // ignore errors during cleanup
+  }
 }
 
 describe('check_pipeline.js', () => {
   let SESSION_ID;
 
-  beforeEach(() => { SESSION_ID = randomUUID(); });
-  afterEach(() => { cleanupSession(SESSION_ID); });
+  beforeEach(() => {
+    SESSION_ID = randomUUID();
+  });
+  afterEach(() => {
+    cleanupSession(SESSION_ID);
+  });
 
   it('exits 0 and writes nothing when session has no state', () => {
     const result = runHook(SESSION_ID);
@@ -75,8 +87,12 @@ describe('check_pipeline.js', () => {
     expect(result.status).toBe(2);
     expect(result.stdout).toContain('🔄 plan');
     expect(result.stderr).toContain('🔄 plan');
-    expect(result.stdout).toContain("Pipeline active — current step: 'plan' (type=agent)");
-    expect(result.stdout).toContain('/writing-plans');
+    expect(result.stdout).toContain(
+      "Pipeline active — current step: 'plan' (type=agent)"
+    );
+    expect(result.stdout).toContain(
+      'Writing a step-by-step implementation plan.'
+    );
   });
 
   it('exits 2 and shows shell commands when current step is type=shell', () => {
@@ -90,10 +106,16 @@ describe('check_pipeline.js', () => {
     });
     const result = runHook(SESSION_ID);
     expect(result.status).toBe(2);
-    expect(result.stdout).toContain('✅ plan → ✅ review_plan → ✅ implementation → ✅ docs → 🔄 verify');
-    expect(result.stderr).toContain('✅ plan → ✅ review_plan → ✅ implementation → ✅ docs → 🔄 verify');
-    expect(result.stdout).toContain("Pipeline active — current step: 'verify' (type=shell)");
-    expect(result.stdout).toContain('yarn test');
+    expect(result.stdout).toContain(
+      '✅ plan → ✅ review_plan → ✅ implementation → ✅ docs → 🔄 verify'
+    );
+    expect(result.stderr).toContain(
+      '✅ plan → ✅ review_plan → ✅ implementation → ✅ docs → 🔄 verify'
+    );
+    expect(result.stdout).toContain(
+      "Pipeline active — current step: 'verify' (type=shell)"
+    );
+    expect(result.stdout).toContain('npm test');
   });
 
   it('exits 2 with error when step visit count reaches max_visits', () => {
@@ -102,13 +124,13 @@ describe('check_pipeline.js', () => {
       pipeline: '.pipeline/pipeline.yaml',
       current_step: 'verify',
       completed_steps: [],
-      visit_counts: { verify: 5 },
+      visit_counts: { verify: 9 },
       shared_state: {},
     });
     const result = runHook(SESSION_ID);
     expect(result.status).toBe(2);
-    expect(result.stdout).toContain("max_visits");
-    expect(result.stdout).toContain("Pipeline error");
+    expect(result.stdout).toContain('max_visits');
+    expect(result.stdout).toContain('Pipeline error');
   });
 
   it('exits 0 and sets mode=free when current step has terminal:true', () => {

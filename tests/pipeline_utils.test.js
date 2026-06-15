@@ -3,7 +3,13 @@ const path = require('path');
 // Must be set before requiring pipeline_utils.js so the CLAUDE_PROJECT_DIR guard doesn't fire.
 process.env.CLAUDE_PROJECT_DIR = path.resolve(__dirname, '..');
 
-const { parseYAML, render, buildAgentUpdateBlock, buildShellUpdateBlock, buildProgressHeader } = require('../hooks/pipeline_utils.js');
+const {
+  parseYAML,
+  render,
+  buildAgentUpdateBlock,
+  buildShellUpdateBlock,
+  buildProgressHeader,
+} = require('../hooks/pipeline_utils.js');
 
 describe('parseYAML', () => {
   it('parses a minimal pipeline with entry and steps', () => {
@@ -74,13 +80,19 @@ steps:
       - yarn typecheck
 `;
     const result = parseYAML(yaml);
-    expect(result.steps.verify.commands).toEqual(['yarn test', 'yarn lint', 'yarn typecheck']);
+    expect(result.steps.verify.commands).toEqual([
+      'yarn test',
+      'yarn lint',
+      'yarn typecheck',
+    ]);
   });
 });
 
 describe('render', () => {
   it('replaces known placeholders with shared state values', () => {
-    const result = render('Context: {{clarify_output}}', { clarify_output: 'use postgres' });
+    const result = render('Context: {{clarify_output}}', {
+      clarify_output: 'use postgres',
+    });
     expect(result).toBe('Context: use postgres');
   });
 
@@ -139,13 +151,13 @@ describe('default pipeline routing', () => {
   const fs = require('fs');
   const path = require('path');
 
-  it('verify routes to bump_version on success', () => {
+  it('verify routes to lint on success', () => {
     const yaml = fs.readFileSync(
       path.resolve(__dirname, '../.pipeline/pipeline.yaml'),
       'utf8'
     );
     const pipeline = parseYAML(yaml);
-    expect(pipeline.steps.verify.next).toBe('bump_version');
+    expect(pipeline.steps.verify.next).toBe('lint');
   });
 
   it('bump_version routes to pr', () => {
@@ -157,13 +169,32 @@ describe('default pipeline routing', () => {
     expect(pipeline.steps.bump_version.next).toBe('pr');
   });
 
-  it('fix_code routes to bump_version (failure path also bumps version)', () => {
+  it('fix_code routes back to verify (re-runs tests after code fix)', () => {
     const yaml = fs.readFileSync(
       path.resolve(__dirname, '../.pipeline/pipeline.yaml'),
       'utf8'
     );
     const pipeline = parseYAML(yaml);
-    expect(pipeline.steps.fix_code.next).toBe('bump_version');
+    expect(pipeline.steps.fix_code.next).toBe('verify');
+  });
+
+  it('lint routes to bump_version on success', () => {
+    const yaml = fs.readFileSync(
+      path.resolve(__dirname, '../.pipeline/pipeline.yaml'),
+      'utf8'
+    );
+    const pipeline = parseYAML(yaml);
+    expect(pipeline.steps.lint.next).toBe('bump_version');
+    expect(pipeline.steps.lint.next_fail).toBe('fix_lint');
+  });
+
+  it('fix_lint routes back to verify (re-runs tests after lint fix)', () => {
+    const yaml = fs.readFileSync(
+      path.resolve(__dirname, '../.pipeline/pipeline.yaml'),
+      'utf8'
+    );
+    const pipeline = parseYAML(yaml);
+    expect(pipeline.steps.fix_lint.next).toBe('verify');
   });
 });
 
@@ -173,18 +204,19 @@ describe('buildProgressHeader', () => {
   });
 
   it('shows completed steps before current step', () => {
-    expect(buildProgressHeader(['plan', 'review'], 'implement'))
-      .toBe('✅ plan → ✅ review → 🔄 implement');
+    expect(buildProgressHeader(['plan', 'review'], 'implement')).toBe(
+      '✅ plan → ✅ review → 🔄 implement'
+    );
   });
 
   it('shows single completed step before current step', () => {
-    expect(buildProgressHeader(['plan'], 'review'))
-      .toBe('✅ plan → 🔄 review');
+    expect(buildProgressHeader(['plan'], 'review')).toBe('✅ plan → 🔄 review');
   });
 
   it('handles repeated step names from cycles', () => {
-    expect(buildProgressHeader(['verify', 'fix', 'verify'], 'fix'))
-      .toBe('✅ verify → ✅ fix → ✅ verify → 🔄 fix');
+    expect(buildProgressHeader(['verify', 'fix', 'verify'], 'fix')).toBe(
+      '✅ verify → ✅ fix → ✅ verify → 🔄 fix'
+    );
   });
 
   it('treats missing completedSteps as empty', () => {

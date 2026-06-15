@@ -19,7 +19,7 @@ Use the **native Claude Code plugin format**.
 
 ## Reasoning
 
-**Against MCP**: The pipeline's core value is autonomous step-chaining — the `Stop` hook fires after Claude responds and injects the next step prompt without user intervention. MCP tools are called *by Claude*, not by the harness, so the Stop hook's auto-continuation behavior cannot be replicated via MCP. Switching to MCP would gut the self-driving mechanic.
+**Against MCP**: The pipeline's core value is autonomous step-chaining — the `Stop` hook fires after Claude responds and injects the next step prompt without user intervention. MCP tools are called _by Claude_, not by the harness, so the Stop hook's auto-continuation behavior cannot be replicated via MCP. Switching to MCP would gut the self-driving mechanic.
 
 **Against npm postinstall**: Silently editing `~/.claude/settings.json` during `npm install -g` is surprising and hard to reverse cleanly. It also creates fragile absolute paths that break when users switch Node versions via `nvm` or `volta`.
 
