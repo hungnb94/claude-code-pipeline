@@ -1,0 +1,7 @@
+entry: start
+
+steps:
+  start:
+    type: agent
+    prompt: |
+      Implement the following: {{user_requirements}}

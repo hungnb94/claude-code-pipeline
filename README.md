@@ -59,11 +59,15 @@ steps:
 /pipeline:run
 ```
 
-Or point to a specific file:
+Or point to a specific file, optionally with inline requirements:
 
 ```
 /pipeline:run path/to/my-pipeline.yaml
+/pipeline:run Add authentication with JWT tokens
+/pipeline:run path/to/my-pipeline.yaml Add authentication with JWT tokens
 ```
+
+Inline requirements are stored as `{{user_requirements}}` in shared state and can be referenced in any step's `prompt` field.
 
 Claude will execute each step automatically, without you needing to prompt it between steps.
 

@@ -41,7 +41,9 @@ process.stdin.on('end', () => {
 
   const sessionId = data.session_id || 'unknown';
   const args = prompt.slice('/pipeline:run'.length).trim();
-  const pipelineFile = args.endsWith('.yaml') ? args : '.pipeline/pipeline.yaml';
+  const tokens = args.split(/\s+/);
+  const pipelineFile = tokens[0] && tokens[0].endsWith('.yaml') ? tokens[0] : '.pipeline/pipeline.yaml';
+  const userRequirements = tokens[0] && tokens[0].endsWith('.yaml') ? tokens.slice(1).join(' ') : args;
   const pipelinePath = path.join(PROJECT_ROOT, pipelineFile);
 
   if (!pipelinePath.startsWith(PROJECT_ROOT + path.sep) && pipelinePath !== PROJECT_ROOT) {
@@ -82,10 +84,10 @@ process.stdin.on('end', () => {
     current_step: config.entry,
     completed_steps: [],
     visit_counts: {},
-    shared_state: {},
+    shared_state: { user_requirements: userRequirements },
   });
 
-  const stepOutput = buildStepOutput(sessionId, config.entry, entryStep, {}, []);
+  const stepOutput = buildStepOutput(sessionId, config.entry, entryStep, { user_requirements: userRequirements }, []);
   process.stdout.write(
     `Pipeline initialized from '${pipelineFile}'. Entry: '${config.entry}'.\n\n` +
     stepOutput + '\n'
