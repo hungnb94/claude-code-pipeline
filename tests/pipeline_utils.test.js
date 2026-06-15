@@ -154,4 +154,8 @@ describe('buildProgressHeader', () => {
     expect(buildProgressHeader(['verify', 'fix', 'verify'], 'fix'))
       .toBe('✅ verify → ✅ fix → ✅ verify → 🔄 fix');
   });
+
+  it('treats missing completedSteps as empty', () => {
+    expect(buildProgressHeader(undefined, 'plan')).toBe('🔄 plan');
+  });
 });

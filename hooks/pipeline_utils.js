@@ -160,7 +160,7 @@ function buildShellUpdateBlock(sessionId, stepName, next, nextFail) {
 
 function buildProgressHeader(completedSteps, currentStep) {
   const parts = [
-    ...completedSteps.map(s => `✅ ${s}`),
+    ...(completedSteps || []).map(s => `✅ ${s}`),
     `🔄 ${currentStep}`,
   ];
   return parts.join(' → ');
