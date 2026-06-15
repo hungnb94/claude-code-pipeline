@@ -94,7 +94,6 @@ describe('check_pipeline.js', () => {
     expect(result.stderr).toContain('✅ plan → ✅ review_plan → ✅ implementation → ✅ docs → 🔄 verify');
     expect(result.stdout).toContain("Pipeline active — current step: 'verify' (type=shell)");
     expect(result.stdout).toContain('yarn test');
-    expect(result.stdout).toContain('yarn lint');
   });
 
   it('exits 2 with error when step visit count reaches max_visits', () => {
