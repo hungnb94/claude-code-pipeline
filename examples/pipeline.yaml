@@ -28,8 +28,8 @@ steps:
       - yarn build
       - yarn test --ci
       - yarn lint
-    on_pass: review
-    on_fail: fix_code
+    next: review
+    next_fail: fix_code
     max_visits: 5
 
   fix_code:
@@ -45,8 +45,8 @@ steps:
     prompt: |
       Review the implementation for correctness, security, and code quality.
       Reply PASS if acceptable, or FAIL: [specific issues with file:line references]
-    on_pass: done
-    on_fail: fix_code
+    next: done
+    next_fail: fix_code
 
   done:
     type: agent
