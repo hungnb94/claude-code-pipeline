@@ -27,16 +27,22 @@ process.stdin.on('end', () => {
   }
 
   const sessionId = data.session_id || '';
-  if (!sessionId) {process.exit(0);}
+  if (!sessionId) {
+    process.exit(0);
+  }
 
   const state = getSessionState(sessionId);
-  if (!state || state.mode !== 'pipeline') {process.exit(0);}
+  if (!state || state.mode !== 'pipeline') {
+    process.exit(0);
+  }
 
   const pipelinePath = path.join(
     PROJECT_ROOT,
     state.pipeline || '.pipeline/pipeline.yaml'
   );
-  if (!fs.existsSync(pipelinePath)) {process.exit(0);}
+  if (!fs.existsSync(pipelinePath)) {
+    process.exit(0);
+  }
 
   let config;
   try {
@@ -47,7 +53,9 @@ process.stdin.on('end', () => {
 
   const current = state.current_step || '';
   const step = (config.steps || {})[current] || null;
-  if (!step) {process.exit(0);}
+  if (!step) {
+    process.exit(0);
+  }
 
   if (step.terminal) {
     state.mode = 'free';

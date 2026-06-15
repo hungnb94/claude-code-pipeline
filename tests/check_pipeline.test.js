@@ -88,7 +88,7 @@ describe('check_pipeline.js', () => {
     expect(result.stdout).toContain(
       "Pipeline active — current step: 'plan' (type=agent)"
     );
-    expect(result.stdout).toContain('/writing-plans');
+    expect(result.stdout).toContain('Writing a step-by-step implementation plan.');
   });
 
   it('exits 2 and shows shell commands when current step is type=shell', () => {
