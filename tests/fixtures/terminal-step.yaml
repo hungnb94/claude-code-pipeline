@@ -1,0 +1,8 @@
+entry: done
+
+steps:
+  done:
+    type: agent
+    terminal: true
+    prompt: |
+      Pipeline complete.
