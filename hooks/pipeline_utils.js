@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const PROJECT_ROOT = path.resolve(__dirname, '../..');
+const PROJECT_ROOT = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 const STATE_PATH = path.join(PROJECT_ROOT, '.pipeline/state.json');
 
 function parseScalar(s) {
@@ -21,7 +21,6 @@ function parseScalar(s) {
 function parseYAML(text) {
   const lines = text.split('\n');
   const root = {};
-  // Stack entries: { obj, indent, key } where key is the key used to reach obj from parent
   const stack = [{ obj: root, indent: -1, key: null }];
   let blockKey = null, blockBaseIndent = 0, blockDetectedIndent = -1, blockLines = [], blockTarget = null;
 
@@ -44,11 +43,8 @@ function parseYAML(text) {
     while (stack.length > 1 && stack[stack.length - 1].indent >= indent) stack.pop();
     const parent = stack[stack.length - 1].obj;
 
-    // Handle block sequence items (- value)
     if (trimmed.startsWith('- ')) {
       const value = parseScalar(trimmed.slice(2).trim());
-      // The current stack top is the array container (an empty {} placeholder).
-      // We need to replace it with an actual array on the grandparent.
       if (stack.length >= 2) {
         const top = stack[stack.length - 1];
         const grandparent = stack[stack.length - 2].obj;
@@ -112,8 +108,6 @@ function escapeForPython(s) {
   return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 }
 
-// Generates the bash+python block Claude must run after completing an agent step.
-// If next is empty, sets mode='free' instead of advancing current_step.
 function buildAgentUpdateBlock(sessionId, stepName, next) {
   const sid = escapeForPython(sessionId);
   const sname = escapeForPython(stepName);
@@ -139,8 +133,6 @@ function buildAgentUpdateBlock(sessionId, stepName, next) {
   );
 }
 
-// Generates the bash+python blocks Claude must run after a shell step.
-// Provides separate commands for success (exit 0) and failure (non-zero exit).
 function buildShellUpdateBlock(sessionId, stepName, next, nextFail) {
   const sid = escapeForPython(sessionId);
   const sname = escapeForPython(stepName);

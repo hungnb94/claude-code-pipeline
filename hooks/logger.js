@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const PROJECT_ROOT = path.resolve(__dirname, '../..');
+const PROJECT_ROOT = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 const LOG_PATH = path.join(PROJECT_ROOT, '.pipeline/hooks.log');
 
 function truncate(value, maxLen = 300) {

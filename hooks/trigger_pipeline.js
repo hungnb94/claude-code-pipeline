@@ -34,10 +34,10 @@ process.stdin.on('end', () => {
   try { data = JSON.parse(raw); } catch { process.exit(0); }
 
   const prompt = (data.prompt || '').trim();
-  if (!prompt.startsWith('/run-pipeline')) process.exit(0);
+  if (!prompt.startsWith('/pipeline:run')) process.exit(0);
 
   const sessionId = data.session_id || 'unknown';
-  const args = prompt.slice('/run-pipeline'.length).trim();
+  const args = prompt.slice('/pipeline:run'.length).trim();
   const pipelineFile = args.endsWith('.yaml') ? args : '.pipeline/pipeline.yaml';
   const pipelinePath = path.join(PROJECT_ROOT, pipelineFile);
 

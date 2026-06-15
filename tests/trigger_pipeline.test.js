@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 
 const PROJECT_ROOT = path.resolve(__dirname, '..');
-const HOOK = path.join(PROJECT_ROOT, '.claude/hooks/trigger_pipeline.js');
+const HOOK = path.join(PROJECT_ROOT, 'hooks/trigger_pipeline.js');
 const STATE_PATH = path.join(PROJECT_ROOT, '.pipeline/state.json');
 
 function runHook(prompt, sessionId) {
@@ -55,7 +55,7 @@ describe('trigger_pipeline.js', () => {
   });
 
   // ── Test 1: exit-early ───────────────────────────────────────────────────
-  it('exits 0 and writes nothing when prompt is not /run-pipeline', () => {
+  it('exits 0 and writes nothing when prompt is not /pipeline:run', () => {
     const result = runHook('hello world', SESSION_ID);
 
     expect(result.status).toBe(0);
@@ -65,7 +65,7 @@ describe('trigger_pipeline.js', () => {
 
   // ── Test 2: missing file ─────────────────────────────────────────────────
   it('exits 1 with error message when pipeline file does not exist', () => {
-    const result = runHook('/run-pipeline nonexistent.yaml', SESSION_ID);
+    const result = runHook('/pipeline:run nonexistent.yaml', SESSION_ID);
 
     expect(result.status).toBe(1);
     expect(result.stdout).toContain('Pipeline file not found');
@@ -74,7 +74,7 @@ describe('trigger_pipeline.js', () => {
 
   // ── Test 3: path traversal ───────────────────────────────────────────────
   it('exits 1 with error message on path traversal attempt', () => {
-    const result = runHook('/run-pipeline ../../../etc/passwd.yaml', SESSION_ID);
+    const result = runHook('/pipeline:run ../../../etc/passwd.yaml', SESSION_ID);
 
     expect(result.status).toBe(1);
     expect(result.stdout).toContain('Pipeline file must be within the project root');
@@ -83,7 +83,7 @@ describe('trigger_pipeline.js', () => {
 
   // ── Test 4: missing entry field ──────────────────────────────────────────
   it('exits 1 when YAML is missing the entry field', () => {
-    const result = runHook('/run-pipeline tests/fixtures/missing-entry.yaml', SESSION_ID);
+    const result = runHook('/pipeline:run tests/fixtures/missing-entry.yaml', SESSION_ID);
 
     expect(result.status).toBe(1);
     expect(result.stdout).toContain("Invalid pipeline: missing 'entry' or 'steps'");
@@ -92,7 +92,7 @@ describe('trigger_pipeline.js', () => {
 
   // ── Test 5: missing steps field ──────────────────────────────────────────
   it('exits 1 when YAML is missing the steps field', () => {
-    const result = runHook('/run-pipeline tests/fixtures/missing-steps.yaml', SESSION_ID);
+    const result = runHook('/pipeline:run tests/fixtures/missing-steps.yaml', SESSION_ID);
 
     expect(result.status).toBe(1);
     expect(result.stdout).toContain("Invalid pipeline: missing 'entry' or 'steps'");
@@ -101,7 +101,7 @@ describe('trigger_pipeline.js', () => {
 
   // ── Test 6: bad entry reference ──────────────────────────────────────────
   it('exits 1 when entry step name is not defined in steps', () => {
-    const result = runHook('/run-pipeline tests/fixtures/bad-entry-ref.yaml', SESSION_ID);
+    const result = runHook('/pipeline:run tests/fixtures/bad-entry-ref.yaml', SESSION_ID);
 
     expect(result.status).toBe(1);
     expect(result.stdout).toContain("Entry step 'nonexistent' not found in steps");
@@ -110,7 +110,7 @@ describe('trigger_pipeline.js', () => {
 
   // ── Test 7: happy path — default YAML ───────────────────────────────────
   it('exits 0, initializes state, and prints step prompt when using default pipeline', () => {
-    const result = runHook('/run-pipeline', SESSION_ID);
+    const result = runHook('/pipeline:run', SESSION_ID);
 
     expect(result.status).toBe(0);
     expect(result.stdout).toContain("Pipeline initialized from '.pipeline/pipeline.yaml'");
@@ -128,7 +128,7 @@ describe('trigger_pipeline.js', () => {
 
   // ── Test 8: happy path — explicit YAML ──────────────────────────────────
   it('exits 0, initializes state, and prints step prompt when given explicit yaml path', () => {
-    const result = runHook('/run-pipeline examples/pipeline.yaml', SESSION_ID);
+    const result = runHook('/pipeline:run examples/pipeline.yaml', SESSION_ID);
 
     expect(result.status).toBe(0);
     expect(result.stdout).toContain("Pipeline initialized from 'examples/pipeline.yaml'");
