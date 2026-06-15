@@ -3,7 +3,7 @@ const path = require('path');
 // Must be set before requiring pipeline_utils.js so the CLAUDE_PROJECT_DIR guard doesn't fire.
 process.env.CLAUDE_PROJECT_DIR = path.resolve(__dirname, '..');
 
-const { parseYAML, render, buildAgentUpdateBlock, buildShellUpdateBlock } = require('../hooks/pipeline_utils.js');
+const { parseYAML, render, buildAgentUpdateBlock, buildShellUpdateBlock, buildProgressHeader } = require('../hooks/pipeline_utils.js');
 
 describe('parseYAML', () => {
   it('parses a minimal pipeline with entry and steps', () => {
@@ -132,5 +132,26 @@ describe('buildShellUpdateBlock', () => {
   it("sets mode='free' on success when next is empty", () => {
     const block = buildShellUpdateBlock('sid', 'verify', '', 'fix_code');
     expect(block).toContain('free');
+  });
+});
+
+describe('buildProgressHeader', () => {
+  it('shows only current step when no steps completed', () => {
+    expect(buildProgressHeader([], 'plan')).toBe('🔄 plan');
+  });
+
+  it('shows completed steps before current step', () => {
+    expect(buildProgressHeader(['plan', 'review'], 'implement'))
+      .toBe('✅ plan → ✅ review → 🔄 implement');
+  });
+
+  it('shows single completed step before current step', () => {
+    expect(buildProgressHeader(['plan'], 'review'))
+      .toBe('✅ plan → 🔄 review');
+  });
+
+  it('handles repeated step names from cycles', () => {
+    expect(buildProgressHeader(['verify', 'fix', 'verify'], 'fix'))
+      .toBe('✅ verify → ✅ fix → ✅ verify → 🔄 fix');
   });
 });
