@@ -120,7 +120,7 @@ describe('check_pipeline.js', () => {
       pipeline: '.pipeline/pipeline.yaml',
       current_step: 'verify',
       completed_steps: [],
-      visit_counts: { verify: 5 },
+      visit_counts: { verify: 9 },
       shared_state: {},
     });
     const result = runHook(SESSION_ID);

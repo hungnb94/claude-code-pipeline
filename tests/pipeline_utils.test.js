@@ -188,13 +188,13 @@ describe('default pipeline routing', () => {
     expect(pipeline.steps.lint.next_fail).toBe('fix_lint');
   });
 
-  it('fix_lint routes back to lint', () => {
+  it('fix_lint routes back to verify (re-runs tests after lint fix)', () => {
     const yaml = fs.readFileSync(
       path.resolve(__dirname, '../.pipeline/pipeline.yaml'),
       'utf8'
     );
     const pipeline = parseYAML(yaml);
-    expect(pipeline.steps.fix_lint.next).toBe('lint');
+    expect(pipeline.steps.fix_lint.next).toBe('verify');
   });
 });
 
