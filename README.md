@@ -122,6 +122,8 @@ Use `max_visits: N` on any step to halt the pipeline with an error if the step i
 - **Continuation**: after each Claude response, a `Stop` hook reads the current step from state and injects the next step's instructions — no user input required between steps.
 - **State**: pipeline state is stored per-session in `.pipeline/state.json`. Multiple concurrent sessions in the same project are isolated by session ID.
 
+> **Note:** Both hooks require the `CLAUDE_PROJECT_DIR` environment variable to be set to the project root. Claude Code sets this automatically when running hooks — if you run hooks manually for debugging, set the variable explicitly: `CLAUDE_PROJECT_DIR=$(pwd) node hooks/check_pipeline.js`.
+
 ## Examples
 
 See [`examples/pipeline.yaml`](examples/pipeline.yaml) for a full clarify → plan → execute → verify → review pipeline.
