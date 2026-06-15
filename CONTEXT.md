@@ -50,3 +50,7 @@ A single file at `.pipeline/state.json` containing states for all sessions, keye
 }
 ```
 The session ID is provided to hooks via hook input. Each session reads and writes only its own key.
+
+### Version
+
+The semantic version string (`major.minor.patch`) recorded in `package.json` and `.claude-plugin/plugin.json`. Both files must always hold the same value. The `bump_version` pipeline step is responsible for choosing and applying the correct bump level based on the nature of the changes in the current pipeline run.
