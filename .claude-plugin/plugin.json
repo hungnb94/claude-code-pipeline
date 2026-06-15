@@ -3,7 +3,8 @@
   "description": "Run multi-step automated pipelines in Claude Code. Define agent and shell steps in YAML, trigger with /pipeline:run.",
   "version": "1.2.1",
   "author": {
-    "name": "Hung Nguyen"
+    "name": "Hung Nguyen",
+    "email": "hungnb94@gmail.com"
   },
   "repository": "https://github.com/hungnb94/claude-code-pipeline",
   "license": "MIT"

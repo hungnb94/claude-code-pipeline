@@ -2,7 +2,7 @@
   "name": "claude-code-pipeline",
   "owner": {
     "name": "Hung Nguyen",
-    "email": "hung@bio-rithm.com"
+    "email": "hungnb94@gmail.com"
   },
   "description": "Multi-step automated pipelines for Claude Code",
   "plugins": [
