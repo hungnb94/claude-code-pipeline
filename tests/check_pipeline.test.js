@@ -74,6 +74,7 @@ describe('check_pipeline.js', () => {
     const result = runHook(SESSION_ID);
     expect(result.status).toBe(2);
     expect(result.stdout).toContain('🔄 plan');
+    expect(result.stderr).toContain('🔄 plan');
     expect(result.stdout).toContain("Pipeline active — current step: 'plan' (type=agent)");
     expect(result.stdout).toContain('/writing-plans');
   });
@@ -90,6 +91,7 @@ describe('check_pipeline.js', () => {
     const result = runHook(SESSION_ID);
     expect(result.status).toBe(2);
     expect(result.stdout).toContain('✅ plan → ✅ review_plan → ✅ implementation → ✅ docs → 🔄 verify');
+    expect(result.stderr).toContain('✅ plan → ✅ review_plan → ✅ implementation → ✅ docs → 🔄 verify');
     expect(result.stdout).toContain("Pipeline active — current step: 'verify' (type=shell)");
     expect(result.stdout).toContain('yarn test');
     expect(result.stdout).toContain('yarn lint');
@@ -136,6 +138,7 @@ describe('check_pipeline.js', () => {
     const result = runHook(SESSION_ID);
     expect(result.status).toBe(2);
     expect(result.stdout).toContain('use postgres for storage');
+    expect(result.stderr).toContain('✅ clarify → 🔄 plan');
   });
 
   it('exits 0 silently when pipeline file does not exist', () => {
