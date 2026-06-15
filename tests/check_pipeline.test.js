@@ -32,7 +32,9 @@ function setSessionState(sessionId, state) {
 }
 
 function cleanupSession(sessionId) {
-  if (!fs.existsSync(STATE_PATH)) {return;}
+  if (!fs.existsSync(STATE_PATH)) {
+    return;
+  }
   try {
     const all = JSON.parse(fs.readFileSync(STATE_PATH, 'utf8'));
     delete all[sessionId];
@@ -88,7 +90,9 @@ describe('check_pipeline.js', () => {
     expect(result.stdout).toContain(
       "Pipeline active — current step: 'plan' (type=agent)"
     );
-    expect(result.stdout).toContain('Writing a step-by-step implementation plan.');
+    expect(result.stdout).toContain(
+      'Writing a step-by-step implementation plan.'
+    );
   });
 
   it('exits 2 and shows shell commands when current step is type=shell', () => {

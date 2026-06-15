@@ -38,10 +38,10 @@ entry: step_name
 
 steps:
   step_name:
-    type: agent        # or shell
+    type: agent # or shell
     prompt: |
       Your prompt here. Use {{previous_step_output}} for shared state.
-    next: next_step    # omit to end pipeline
+    next: next_step # omit to end pipeline
 
   shell_step:
     type: shell
@@ -49,5 +49,5 @@ steps:
       - npm test
     next: on_success
     next_fail: on_failure
-    max_visits: 3      # prevent infinite loops
+    max_visits: 3 # prevent infinite loops
 ```

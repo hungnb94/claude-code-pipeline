@@ -22,6 +22,7 @@ module.exports = [
       'no-var': 'error',
       'prefer-const': 'error',
       curly: 'error',
+      'brace-style': ['error', '1tbs'],
     },
   },
   {

@@ -5,6 +5,7 @@
 This is a **Claude Code plugin** that enables multi-step automated pipelines defined in YAML.
 
 Key paths:
+
 - `skills/run/` — the `/pipeline:run` skill entry point (`skills/run/SKILL.md`)
 - `hooks/trigger_pipeline.js` — `UserPromptSubmit` hook; initializes pipeline state and injects step 1
 - `hooks/check_pipeline.js` — `Stop` hook; drives continuation after each step

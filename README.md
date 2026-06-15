@@ -75,10 +75,10 @@ Claude will execute each step automatically, without you needing to prompt it be
 
 ### Top-level fields
 
-| Field | Required | Description |
-|---|---|---|
-| `entry` | yes | Name of the first step to execute |
-| `steps` | yes | Map of step names to step definitions |
+| Field   | Required | Description                           |
+| ------- | -------- | ------------------------------------- |
+| `entry` | yes      | Name of the first step to execute     |
+| `steps` | yes      | Map of step names to step definitions |
 
 ### Agent step
 
@@ -90,7 +90,7 @@ step_name:
   prompt: |
     Your instructions here.
     Use {{other_step_output}} to reference previous step results.
-  next: next_step_name   # omit to end the pipeline
+  next: next_step_name # omit to end the pipeline
 ```
 
 ### Shell step
@@ -103,9 +103,9 @@ step_name:
   commands:
     - npm test
     - npm run lint
-  next: on_success         # step to run if all commands exit 0
-  next_fail: on_failure    # step to run if any command fails (omit to end pipeline)
-  max_visits: 5            # optional: halt pipeline if step is visited N or more times
+  next: on_success # step to run if all commands exit 0
+  next_fail: on_failure # step to run if any command fails (omit to end pipeline)
+  max_visits: 5 # optional: halt pipeline if step is visited N or more times
 ```
 
 ### Shared state
