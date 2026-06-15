@@ -14,12 +14,12 @@
 
 | File | Action | Responsibility |
 |------|--------|----------------|
-| `.claude/hooks/pipeline_utils.js` | Create | Shared: `parseYAML`, `render`, state read/write for `state.json` |
+| `.claude/hooks/pipeline_utils.js` | Create | Shared: `parseYAML`, `render`, state read/write, prompt builders |
 | `.claude/hooks/trigger_pipeline.js` | Create | UserPromptSubmit: detect `/run-pipeline`, init state, inject step 1 |
 | `.claude/hooks/check_pipeline.js` | Modify | Stop: read session state, inject next step prompt + update command |
 | `.claude/hooks/start_pipeline.js` | Delete | No longer needed — superseded by trigger_pipeline.js |
 | `.claude/settings.json` | Modify | Wire `trigger_pipeline.js` to UserPromptSubmit; remove SessionStart hook |
-| `examples/pipeline.yaml` | Modify | Update routing fields: `on_pass`→`next`, `on_fail`→`next_fail` |
+| `examples/pipeline.yaml` | Modify | Fix missing `next`, remove `{{requirement}}`, mark terminal step |
 
 **State file format** — `.pipeline/state.json`:
 ```json
@@ -35,11 +35,15 @@
 }
 ```
 
+**Routing rules:**
+- Agent steps: always follow `next`. If `next` is absent → set `mode = "free"` (pipeline complete).
+- Shell steps: follow `next` on exit 0, `next_fail` on non-zero. If target is absent → set `mode = "free"`.
+
 ---
 
 ### Task 1: Create `pipeline_utils.js`
 
-Extract shared logic from `check_pipeline.js` into a reusable module. Both `trigger_pipeline.js` and the updated `check_pipeline.js` will `require` this.
+All shared logic lives here: YAML parsing, template rendering, state I/O, and the prompt builders used by both hooks. Centralizing the builders ensures consistent output and eliminates duplication.
 
 **Files:**
 - Create: `.claude/hooks/pipeline_utils.js`
@@ -136,16 +140,70 @@ function setSessionState(sessionId, sessionState) {
   writeAllStates(all);
 }
 
-module.exports = { parseYAML, render, readAllStates, writeAllStates, getSessionState, setSessionState, PROJECT_ROOT, STATE_PATH };
+// Generates the bash+python block Claude must run after completing an agent step.
+// If next is empty, sets mode='free' instead of advancing current_step.
+function buildAgentUpdateBlock(sessionId, stepName, next) {
+  const advance = next
+    ? `sess['current_step'] = '${next}'`
+    : `sess['mode'] = 'free'`;
+  const py = [
+    `import json; from pathlib import Path`,
+    `p = Path('.pipeline/state.json')`,
+    `s = json.loads(p.read_text())`,
+    `sess = s['${sessionId}']`,
+    `sess['completed_steps'].append('${stepName}')`,
+    `sess.setdefault('visit_counts', {})`,
+    `sess['visit_counts']['${stepName}'] = sess['visit_counts'].get('${stepName}', 0) + 1`,
+    `sess['shared_state']['${stepName}_output'] = 'REPLACE_WITH_ONE_LINE_SUMMARY'`,
+    advance,
+    `p.write_text(json.dumps(s, indent=2))`,
+  ].join('\n');
+  return (
+    `After completing your response, advance the pipeline by running:\n\n` +
+    `\`\`\`bash\npython3 -c "\n${py}\n"\n\`\`\``
+  );
+}
+
+// Generates the bash+python blocks Claude must run after a shell step.
+// Provides separate commands for success (exit 0) and failure (non-zero exit).
+function buildShellUpdateBlock(sessionId, stepName, next, nextFail) {
+  const baseLines = [
+    `import json; from pathlib import Path`,
+    `p = Path('.pipeline/state.json')`,
+    `s = json.loads(p.read_text())`,
+    `sess = s['${sessionId}']`,
+    `sess['completed_steps'].append('${stepName}')`,
+    `sess.setdefault('visit_counts', {})`,
+    `sess['visit_counts']['${stepName}'] = sess['visit_counts'].get('${stepName}', 0) + 1`,
+  ];
+  const successLine = next ? `sess['current_step'] = '${next}'` : `sess['mode'] = 'free'`;
+  const failLine = nextFail ? `sess['current_step'] = '${nextFail}'` : `sess['mode'] = 'free'`;
+  const pySuccess = [...baseLines, successLine, `p.write_text(json.dumps(s, indent=2))`].join('\n');
+  const pyFail    = [...baseLines, failLine,    `p.write_text(json.dumps(s, indent=2))`].join('\n');
+  return (
+    `If ALL commands exit 0, run:\n\`\`\`bash\npython3 -c "\n${pySuccess}\n"\n\`\`\`\n\n` +
+    `If ANY command fails, run:\n\`\`\`bash\npython3 -c "\n${pyFail}\n"\n\`\`\``
+  );
+}
+
+module.exports = {
+  parseYAML, render,
+  readAllStates, writeAllStates, getSessionState, setSessionState,
+  buildAgentUpdateBlock, buildShellUpdateBlock,
+  PROJECT_ROOT, STATE_PATH,
+};
 ```
 
-- [ ] **Step 2: Verify the module loads without error**
+- [ ] **Step 2: Verify the module loads and exports all symbols**
 
 ```bash
 node -e "const u = require('./.claude/hooks/pipeline_utils.js'); console.log(Object.keys(u).join(', '));"
 ```
 
-Expected output: `parseYAML, render, readAllStates, writeAllStates, getSessionState, setSessionState, PROJECT_ROOT, STATE_PATH`
+Expected output:
+```
+parseYAML, render, readAllStates, writeAllStates, getSessionState, setSessionState, buildAgentUpdateBlock, buildShellUpdateBlock, PROJECT_ROOT, STATE_PATH
+```
 
 - [ ] **Step 3: Commit**
 
@@ -158,7 +216,7 @@ git commit -m "feat: add pipeline_utils shared module"
 
 ### Task 2: Create `trigger_pipeline.js`
 
-New UserPromptSubmit hook. Detects `/run-pipeline [yaml]`, initializes session state, outputs the first step's execution prompt to stdout. Claude receives this as additional context and executes step 1.
+Detects `/run-pipeline [yaml]` on UserPromptSubmit, initializes session state, and outputs the first step's execution prompt to stdout. Claude receives this output as additional context injected into the conversation and executes step 1 immediately.
 
 **Files:**
 - Create: `.claude/hooks/trigger_pipeline.js`
@@ -171,62 +229,26 @@ New UserPromptSubmit hook. Detects `/run-pipeline [yaml]`, initializes session s
 
 const fs = require('fs');
 const path = require('path');
-const { parseYAML, render, setSessionState, PROJECT_ROOT } = require('./pipeline_utils.js');
+const {
+  parseYAML, render, setSessionState,
+  buildAgentUpdateBlock, buildShellUpdateBlock,
+  PROJECT_ROOT,
+} = require('./pipeline_utils.js');
 
-function buildStepPrompt(stepName, step, sharedState) {
+function buildStepOutput(sessionId, stepName, step, sharedState) {
   if (step.type === 'shell') {
     const cmds = (step.commands || []).map(c => `  ${c}`).join('\n');
-    const nextOk = step.next || '';
-    const nextFail = step.next_fail || '';
     return (
       `Pipeline step: '${stepName}' (type=shell)\n\n` +
       `Run these commands in sequence:\n${cmds}\n\n` +
-      buildShellUpdateBlock(stepName, nextOk, nextFail)
+      buildShellUpdateBlock(sessionId, stepName, step.next || '', step.next_fail || '')
     );
   }
   const prompt = render(step.prompt || '', sharedState);
-  const next = step.next || '';
   return (
     `Pipeline step: '${stepName}' (type=agent)\n\n` +
     `Execute the following prompt:\n---\n${prompt.trim()}\n---\n\n` +
-    buildAgentUpdateBlock(stepName, next)
-  );
-}
-
-function buildAgentUpdateBlock(stepName, next) {
-  return (
-    `After completing your response, advance the pipeline by running:\n\n` +
-    `\`\`\`bash\n` +
-    `python3 -c "\nimport json; from pathlib import Path\n` +
-    `p = Path('.pipeline/state.json')\n` +
-    `s = json.loads(p.read_text())\n` +
-    `sess = s['SESSION_ID']\n` +
-    `sess['completed_steps'].append('${stepName}')\n` +
-    `sess['current_step'] = '${next}'\n` +
-    `sess.setdefault('visit_counts', {})\n` +
-    `sess['visit_counts']['${stepName}'] = sess['visit_counts'].get('${stepName}', 0) + 1\n` +
-    `sess['shared_state']['${stepName}_output'] = 'REPLACE_WITH_ONE_LINE_SUMMARY'\n` +
-    `p.write_text(json.dumps(s, indent=2))\n` +
-    `"\n\`\`\``
-  );
-}
-
-function buildShellUpdateBlock(stepName, next, nextFail) {
-  const base =
-    `import json; from pathlib import Path\n` +
-    `p = Path('.pipeline/state.json')\n` +
-    `s = json.loads(p.read_text())\n` +
-    `sess = s['SESSION_ID']\n` +
-    `sess['completed_steps'].append('${stepName}')\n` +
-    `sess.setdefault('visit_counts', {})\n` +
-    `sess['visit_counts']['${stepName}'] = sess['visit_counts'].get('${stepName}', 0) + 1\n`;
-  const onSuccess = base + `sess['current_step'] = '${next}'\np.write_text(json.dumps(s, indent=2))\n`;
-  const onFail = nextFail
-    ? base + `sess['current_step'] = '${nextFail}'\np.write_text(json.dumps(s, indent=2))\n`
-    : base + `sess['mode'] = 'free'\np.write_text(json.dumps(s, indent=2))\n`;
-  return (
-    `If ALL commands exit 0, run:\n\`\`\`bash\npython3 -c "${onSuccess}"\`\`\`\n\n` +
-    `If ANY command fails, run:\n\`\`\`bash\npython3 -c "${onFail}"\`\`\``
+    buildAgentUpdateBlock(sessionId, stepName, step.next || '')
   );
 }
 
@@ -261,23 +283,25 @@ process.stdin.on('end', () => {
     process.exit(1);
   }
 
-  const sessionState = {
+  const entryStep = config.steps[config.entry];
+  if (!entryStep) {
+    process.stdout.write(`Entry step '${config.entry}' not found in steps.\n`);
+    process.exit(1);
+  }
+
+  setSessionState(sessionId, {
     mode: 'pipeline',
     pipeline: pipelineFile,
     current_step: config.entry,
     completed_steps: [],
     visit_counts: {},
     shared_state: {},
-  };
-  setSessionState(sessionId, sessionState);
+  });
 
-  const entryStep = config.steps[config.entry];
-  const stepPrompt = buildStepPrompt(config.entry, entryStep, {})
-    .replace(/SESSION_ID/g, sessionId);
-
+  const stepOutput = buildStepOutput(sessionId, config.entry, entryStep, {});
   process.stdout.write(
     `Pipeline initialized from '${pipelineFile}'. Entry: '${config.entry}'.\n\n` +
-    stepPrompt + '\n'
+    stepOutput + '\n'
   );
   process.exit(0);
 });
@@ -291,16 +315,25 @@ node --check .claude/hooks/trigger_pipeline.js && echo "OK"
 
 Expected: `OK`
 
-- [ ] **Step 3: Smoke-test with mock input**
+- [ ] **Step 3: Smoke-test with default pipeline**
 
 ```bash
 echo '{"hook_event_name":"UserPromptSubmit","session_id":"test123","prompt":"/run-pipeline"}' \
   | node .claude/hooks/trigger_pipeline.js
 ```
 
-Expected: output containing `Pipeline initialized` and `Pipeline step: 'plan'`
+Expected: output starting with `Pipeline initialized from '.pipeline/pipeline.yaml'` followed by the first step's prompt and Python update block.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 4: Smoke-test with missing file**
+
+```bash
+echo '{"hook_event_name":"UserPromptSubmit","session_id":"test123","prompt":"/run-pipeline nonexistent.yaml"}' \
+  | node .claude/hooks/trigger_pipeline.js; echo "exit: $?"
+```
+
+Expected: `Pipeline file not found: nonexistent.yaml`, exit code `1`.
+
+- [ ] **Step 5: Commit**
 
 ```bash
 git add .claude/hooks/trigger_pipeline.js
@@ -311,7 +344,7 @@ git commit -m "feat: add trigger_pipeline UserPromptSubmit hook"
 
 ### Task 3: Update `check_pipeline.js`
 
-Replace the old single-file state with the new `state.json` format (keyed by session ID). Inject both the step prompt and the Python state-update command so Claude knows exactly what to do.
+Replace the old single-file state with `state.json` keyed by session ID. Import prompt builders from `pipeline_utils.js` (no local duplication). Add `setSessionState` to top-level imports and handle the terminal step by setting `mode = "free"`.
 
 **Files:**
 - Modify: `.claude/hooks/check_pipeline.js`
@@ -322,46 +355,14 @@ Replace the old single-file state with the new `state.json` format (keyed by ses
 #!/usr/bin/env node
 'use strict';
 
-const { parseYAML, render, getSessionState, PROJECT_ROOT } = require('./pipeline_utils.js');
 const fs = require('fs');
 const path = require('path');
-
-function buildAgentUpdateBlock(sessionId, stepName, next) {
-  return (
-    `After completing your response, advance the pipeline by running:\n\n` +
-    `\`\`\`bash\n` +
-    `python3 -c "\nimport json; from pathlib import Path\n` +
-    `p = Path('.pipeline/state.json')\n` +
-    `s = json.loads(p.read_text())\n` +
-    `sess = s['${sessionId}']\n` +
-    `sess['completed_steps'].append('${stepName}')\n` +
-    `sess['current_step'] = '${next}'\n` +
-    `sess.setdefault('visit_counts', {})\n` +
-    `sess['visit_counts']['${stepName}'] = sess['visit_counts'].get('${stepName}', 0) + 1\n` +
-    `sess['shared_state']['${stepName}_output'] = 'REPLACE_WITH_ONE_LINE_SUMMARY'\n` +
-    `p.write_text(json.dumps(s, indent=2))\n` +
-    `"\n\`\`\``
-  );
-}
-
-function buildShellUpdateBlock(sessionId, stepName, next, nextFail) {
-  const base =
-    `import json; from pathlib import Path\n` +
-    `p = Path('.pipeline/state.json')\n` +
-    `s = json.loads(p.read_text())\n` +
-    `sess = s['${sessionId}']\n` +
-    `sess['completed_steps'].append('${stepName}')\n` +
-    `sess.setdefault('visit_counts', {})\n` +
-    `sess['visit_counts']['${stepName}'] = sess['visit_counts'].get('${stepName}', 0) + 1\n`;
-  const onSuccess = base + `sess['current_step'] = '${next}'\np.write_text(json.dumps(s, indent=2))\n`;
-  const onFail = nextFail
-    ? base + `sess['current_step'] = '${nextFail}'\np.write_text(json.dumps(s, indent=2))\n`
-    : base + `sess['mode'] = 'free'\np.write_text(json.dumps(s, indent=2))\n`;
-  return (
-    `If ALL commands exit 0, run:\n\`\`\`bash\npython3 -c "${onSuccess}"\`\`\`\n\n` +
-    `If ANY command fails, run:\n\`\`\`bash\npython3 -c "${onFail}"\`\`\``
-  );
-}
+const {
+  parseYAML, render,
+  getSessionState, setSessionState,
+  buildAgentUpdateBlock, buildShellUpdateBlock,
+  PROJECT_ROOT,
+} = require('./pipeline_utils.js');
 
 let raw = '';
 process.stdin.setEncoding('utf8');
@@ -387,24 +388,20 @@ process.stdin.on('end', () => {
   if (!step) process.exit(0);
 
   if (step.terminal) {
-    // Mark pipeline complete
-    const { setSessionState } = require('./pipeline_utils.js');
     state.mode = 'free';
     setSessionState(sessionId, state);
     process.exit(0);
   }
 
-  // Check max_visits
   const visits = (state.visit_counts || {})[current] || 0;
   if (step.max_visits && visits >= step.max_visits) {
     process.stdout.write(
-      `Pipeline error: step '${current}' has reached max_visits (${step.max_visits}). Pipeline halted.\n`
+      `Pipeline error: step '${current}' reached max_visits (${step.max_visits}). Pipeline halted.\n`
     );
     process.exit(2);
   }
 
   const sharedState = state.shared_state || {};
-  const prompt = render(step.prompt || '', sharedState);
   const stepType = step.type || 'agent';
 
   let output;
@@ -415,6 +412,7 @@ process.stdin.on('end', () => {
       `Run these commands in sequence:\n${cmds}\n\n` +
       buildShellUpdateBlock(sessionId, current, step.next || '', step.next_fail || '');
   } else {
+    const prompt = render(step.prompt || '', sharedState);
     output =
       `Pipeline active — current step: '${current}' (type=agent).\n\n` +
       `Execute the following prompt:\n---\n${prompt.trim()}\n---\n\n` +
@@ -434,21 +432,37 @@ node --check .claude/hooks/check_pipeline.js && echo "OK"
 
 Expected: `OK`
 
-- [ ] **Step 3: Smoke-test with mock state**
+- [ ] **Step 3: Smoke-test — active pipeline injects next step**
 
 ```bash
-# Create test state
 mkdir -p .pipeline
-echo '{"test123":{"mode":"pipeline","pipeline":".pipeline/pipeline.yaml","current_step":"plan","completed_steps":[],"visit_counts":{},"shared_state":{}}}' \
-  > .pipeline/state.json
+echo '{
+  "test123": {
+    "mode": "pipeline",
+    "pipeline": ".pipeline/pipeline.yaml",
+    "current_step": "plan",
+    "completed_steps": [],
+    "visit_counts": {},
+    "shared_state": {}
+  }
+}' > .pipeline/state.json
 
 echo '{"hook_event_name":"Stop","session_id":"test123"}' \
   | node .claude/hooks/check_pipeline.js; echo "exit: $?"
 ```
 
-Expected: output containing `Pipeline active` and `Execute the following prompt`, exit code `2`
+Expected: output containing `Pipeline active — current step: 'plan'` and the Python update block, exit code `2`.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 4: Smoke-test — inactive session exits cleanly**
+
+```bash
+echo '{"hook_event_name":"Stop","session_id":"other_session"}' \
+  | node .claude/hooks/check_pipeline.js; echo "exit: $?"
+```
+
+Expected: no output, exit code `0`.
+
+- [ ] **Step 5: Commit**
 
 ```bash
 git add .claude/hooks/check_pipeline.js
@@ -459,7 +473,7 @@ git commit -m "refactor: update check_pipeline to use state.json keyed by sessio
 
 ### Task 4: Update `settings.json` and remove `start_pipeline.js`
 
-Wire `trigger_pipeline.js` into UserPromptSubmit. Remove the now-obsolete `SessionStart` hook.
+Wire `trigger_pipeline.js` into UserPromptSubmit. The `SessionStart` hook (`start_pipeline.js`) is no longer needed — state is now per-session and initialized on demand by `trigger_pipeline.js`.
 
 **Files:**
 - Modify: `.claude/settings.json`
@@ -513,34 +527,93 @@ git commit -m "chore: wire trigger_pipeline hook, remove obsolete SessionStart h
 
 ---
 
-### Task 5: Update `examples/pipeline.yaml`
+### Task 5: Fix `examples/pipeline.yaml`
 
-Align routing fields with the new convention (`next`/`next_fail`).
+The example file has missing `next` fields on `clarify` and `plan`, uses `{{requirement}}` (removed from design), and has `next_fail` on an agent step (`review`) which is only meaningful for shell steps.
 
 **Files:**
 - Modify: `examples/pipeline.yaml`
 
-- [ ] **Step 1: Read and update the file**
+- [ ] **Step 1: Overwrite with corrected content**
 
-Replace all `on_pass:` with `next:` and all `on_fail:` with `next_fail:`. Remove any `{{requirement}}` placeholders.
+```yaml
+entry: clarify
 
-- [ ] **Step 2: Verify the YAML parses correctly**
+steps:
+  clarify:
+    type: agent
+    prompt: |
+      Read the codebase and identify scope, dependencies, and clarified requirement.
+    next: plan
+
+  plan:
+    type: agent
+    prompt: |
+      Write a step-by-step implementation plan.
+      Context: {{clarify_output}}
+    next: execute
+
+  execute:
+    type: agent
+    prompt: |
+      Implement the following plan exactly.
+      Plan: {{plan_output}}
+    next: verify
+
+  verify:
+    type: shell
+    commands:
+      - yarn build
+      - yarn test --ci
+      - yarn lint
+    next: review
+    next_fail: fix_code
+    max_visits: 5
+
+  fix_code:
+    type: agent
+    agent: opencode
+    prompt: |
+      Fix the errors below. Only touch related files, do not refactor.
+      Errors: {{verify_output}}
+    next: verify
+
+  review:
+    type: agent
+    prompt: |
+      Review the implementation for correctness, security, and code quality.
+    next: done
+
+  done:
+    type: agent
+    prompt: |
+      Session complete. Summarize what was implemented and update docs.
+    terminal: true
+```
+
+- [ ] **Step 2: Verify the YAML parses and all steps have valid routing**
 
 ```bash
 node -e "
-const {parseYAML} = require('./.claude/hooks/pipeline_utils.js');
+const { parseYAML } = require('./.claude/hooks/pipeline_utils.js');
 const fs = require('fs');
-const c = parseYAML(fs.readFileSync('examples/pipeline.yaml','utf8'));
-console.log('entry:', c.entry);
-console.log('steps:', Object.keys(c.steps).join(', '));
+const c = parseYAML(fs.readFileSync('examples/pipeline.yaml', 'utf8'));
+const steps = c.steps;
+let ok = true;
+for (const [name, step] of Object.entries(steps)) {
+  if (!step.terminal && !step.next) {
+    console.error('MISSING next:', name); ok = false;
+  }
+}
+if (ok) console.log('All steps valid. Entry:', c.entry, '| Steps:', Object.keys(steps).join(', '));
 "
 ```
 
-Expected: prints entry step name and all step names without error.
+Expected: `All steps valid. Entry: clarify | Steps: clarify, plan, execute, verify, fix_code, review, done`
 
 - [ ] **Step 3: Commit**
 
 ```bash
 git add examples/pipeline.yaml
-git commit -m "chore: update examples/pipeline.yaml to use next/next_fail routing"
+git commit -m "fix: correct examples/pipeline.yaml routing and remove requirement placeholder"
 ```

@@ -1,0 +1,18 @@
+{
+  "test123": {
+    "mode": "pipeline",
+    "pipeline": ".pipeline/pipeline.yaml",
+    "current_step": "plan",
+    "completed_steps": [],
+    "visit_counts": {},
+    "shared_state": {}
+  },
+  "test_final": {
+    "mode": "pipeline",
+    "pipeline": ".pipeline/pipeline.yaml",
+    "current_step": "plan",
+    "completed_steps": [],
+    "visit_counts": {},
+    "shared_state": {}
+  }
+}

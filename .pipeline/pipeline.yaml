@@ -1,0 +1,13 @@
+entry: plan
+
+steps:
+  plan:
+    type: agent
+    prompt: |
+      This is the plan step.
+    next: execute
+  execute:
+    type: agent
+    prompt: |
+      This is the execute step.
+    terminal: true
