@@ -1,0 +1,5 @@
+steps:
+  foo:
+    type: agent
+    prompt: |
+      Hello world.
