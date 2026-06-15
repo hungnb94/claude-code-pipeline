@@ -16,10 +16,6 @@
           {
             "type": "command",
             "command": "node .claude/hooks/trigger_pipeline.js"
-          },
-          {
-            "type": "command",
-            "command": "node .claude/hooks/logger.js"
           }
         ]
       }

@@ -38,7 +38,9 @@ function cleanupSession(sessionId) {
     const all = JSON.parse(fs.readFileSync(STATE_PATH, 'utf8'));
     delete all[sessionId];
     fs.writeFileSync(STATE_PATH, JSON.stringify(all, null, 2));
-  } catch {}
+  } catch (err) {
+    console.error('cleanupSession failed:', err);
+  }
 }
 
 describe('trigger_pipeline.js', () => {
@@ -121,6 +123,7 @@ describe('trigger_pipeline.js', () => {
     expect(state.current_step).toBe('plan');
     expect(state.completed_steps).toEqual([]);
     expect(state.shared_state).toEqual({});
+    expect(state.visit_counts).toEqual({});
   });
 
   // ── Test 8: happy path — explicit YAML ──────────────────────────────────
@@ -138,5 +141,6 @@ describe('trigger_pipeline.js', () => {
     expect(state.current_step).toBe('clarify');
     expect(state.completed_steps).toEqual([]);
     expect(state.shared_state).toEqual({});
+    expect(state.visit_counts).toEqual({});
   });
 });

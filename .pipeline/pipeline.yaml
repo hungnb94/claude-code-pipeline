@@ -4,10 +4,16 @@ steps:
   plan:
     type: agent
     prompt: |
-      This is the plan step.
+      /writing-plans writing a step-by-step implementation plan.
+    next: review_plan
+
+  review_plan:
+    type: agent
+    prompt: |
+      Act as a independent reviewer review implementation plan and create better plan
     next: execute
+
   execute:
     type: agent
     prompt: |
-      This is the execute step.
-    terminal: true
+      Dispatch subagents to implement implementation plan
