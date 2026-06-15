@@ -27,7 +27,7 @@ The `/pipeline:run [yaml]` user input that initiates pipeline execution. Detecte
 
 ### Plugin
 
-A self-contained directory distributed via git that extends Claude Code with skills, hooks, and agents. Installed globally via `/plugin install github:<owner>/<repo>` — works across all projects without per-project setup.
+A self-contained directory distributed via a Marketplace. Users add the marketplace once (`/plugin marketplace add <owner>/<repo>`), then install the plugin by name (`/plugin install <plugin>@<marketplace>`). Installed plugins work globally across all projects without per-project setup.
 
 ### Plugin Manifest
 

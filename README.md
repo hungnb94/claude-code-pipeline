@@ -8,8 +8,11 @@ A Claude Code plugin that lets you define multi-step automated pipelines in YAML
 
 ## Install
 
+Claude Code uses a marketplace catalog for discovery — you add the marketplace once, then install individual plugins from it.
+
 ```
-/plugin install github:hungnb94/claude-code-pipeline
+/plugin marketplace add hungnb94/claude-code-pipeline
+/plugin install pipeline@claude-code-pipeline
 ```
 
 ## Quick start
@@ -136,5 +139,5 @@ See [`examples/pipeline.yaml`](examples/pipeline.yaml) for a full clarify → pl
 ## Uninstall
 
 ```
-/plugin uninstall pipeline
+/plugin uninstall pipeline@claude-code-pipeline
 ```
