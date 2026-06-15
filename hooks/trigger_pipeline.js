@@ -87,7 +87,7 @@ process.stdin.on('end', () => {
     shared_state: { user_requirements: userRequirements },
   });
 
-  const stepOutput = buildStepOutput(sessionId, config.entry, entryStep, {}, []);
+  const stepOutput = buildStepOutput(sessionId, config.entry, entryStep, { user_requirements: userRequirements }, []);
   process.stdout.write(
     `Pipeline initialized from '${pipelineFile}'. Entry: '${config.entry}'.\n\n` +
     stepOutput + '\n'

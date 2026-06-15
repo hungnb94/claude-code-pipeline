@@ -167,4 +167,12 @@ describe('trigger_pipeline.js', () => {
     expect(state.pipeline).toBe('examples/pipeline.yaml');
     expect(state.shared_state).toEqual({ user_requirements: 'Add authentication to the app' });
   });
+
+  // ── Test 11: requirements rendered in entry step prompt ──────────────────
+  it('renders user_requirements in entry step prompt output', () => {
+    const result = runHook('/pipeline:run tests/fixtures/requirements-entry.yaml Add authentication to the app', SESSION_ID);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('Implement the following: Add authentication to the app');
+  });
 });
