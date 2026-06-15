@@ -122,7 +122,7 @@ describe('trigger_pipeline.js', () => {
     expect(state.pipeline).toBe('.pipeline/pipeline.yaml');
     expect(state.current_step).toBe('plan');
     expect(state.completed_steps).toEqual([]);
-    expect(state.shared_state).toEqual({});
+    expect(state.shared_state).toEqual({ user_requirements: '' });
     expect(state.visit_counts).toEqual({});
   });
 
@@ -141,7 +141,30 @@ describe('trigger_pipeline.js', () => {
     expect(state.pipeline).toBe('examples/pipeline.yaml');
     expect(state.current_step).toBe('clarify');
     expect(state.completed_steps).toEqual([]);
-    expect(state.shared_state).toEqual({});
+    expect(state.shared_state).toEqual({ user_requirements: '' });
     expect(state.visit_counts).toEqual({});
+  });
+
+  // ── Test 9: inline requirements, no explicit path ────────────────────────
+  it('stores inline requirements in shared_state when no yaml path given', () => {
+    const result = runHook('/pipeline:run Add authentication to the app', SESSION_ID);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("Pipeline initialized from '.pipeline/pipeline.yaml'");
+
+    const state = readSessionState(SESSION_ID);
+    expect(state.shared_state).toEqual({ user_requirements: 'Add authentication to the app' });
+  });
+
+  // ── Test 10: inline requirements with explicit yaml path ─────────────────
+  it('stores inline requirements in shared_state when explicit yaml path given', () => {
+    const result = runHook('/pipeline:run examples/pipeline.yaml Add authentication to the app', SESSION_ID);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("Pipeline initialized from 'examples/pipeline.yaml'");
+
+    const state = readSessionState(SESSION_ID);
+    expect(state.pipeline).toBe('examples/pipeline.yaml');
+    expect(state.shared_state).toEqual({ user_requirements: 'Add authentication to the app' });
   });
 });
