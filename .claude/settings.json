@@ -1,15 +1,5 @@
 {
   "hooks": {
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node .claude/hooks/start_pipeline.js"
-          }
-        ]
-      }
-    ],
     "Stop": [
       {
         "hooks": [
@@ -23,6 +13,10 @@
     "UserPromptSubmit": [
       {
         "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/trigger_pipeline.js"
+          },
           {
             "type": "command",
             "command": "node .claude/hooks/logger.js"
