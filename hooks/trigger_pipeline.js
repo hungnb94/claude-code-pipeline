@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-'use strict';
 
 const fs = require('fs');
 const path = require('path');
@@ -34,10 +33,10 @@ process.stdin.on('end', () => {
   try { data = JSON.parse(raw); } catch { process.exit(0); }
 
   const prompt = (data.prompt || '').trim();
-  if (!prompt.startsWith('/run-pipeline')) process.exit(0);
+  if (!prompt.startsWith('/pipeline:run')) process.exit(0);
 
   const sessionId = data.session_id || 'unknown';
-  const args = prompt.slice('/run-pipeline'.length).trim();
+  const args = prompt.slice('/pipeline:run'.length).trim();
   const pipelineFile = args.endsWith('.yaml') ? args : '.pipeline/pipeline.yaml';
   const pipelinePath = path.join(PROJECT_ROOT, pipelineFile);
 
@@ -66,6 +65,11 @@ process.stdin.on('end', () => {
   if (!entryStep) {
     process.stdout.write(`Entry step '${config.entry}' not found in steps.\n`);
     process.exit(1);
+  }
+
+  if (entryStep.terminal) {
+    process.stdout.write(`Pipeline initialized from '${pipelineFile}' but entry step '${config.entry}' is terminal — pipeline complete.\n`);
+    process.exit(0);
   }
 
   setSessionState(sessionId, {

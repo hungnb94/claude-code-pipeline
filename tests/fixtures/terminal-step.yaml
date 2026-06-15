@@ -1,0 +1,6 @@
+entry: done
+
+steps:
+  done:
+    type: agent
+    terminal: true

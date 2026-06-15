@@ -22,7 +22,7 @@ steps:
   docs:
     type: agent
     prompt: |
-      Update docs (README.md, CONTEXT.md, docs/*.md) to reflect chagnes
+      Update docs (README.md, CONTEXT.md, docs/adr/*.md, docs/*.md) to reflect chagnes
     next: verify
 
   verify:

@@ -1,0 +1,27 @@
+{
+  "description": "Pipeline plugin hooks — UserPromptSubmit initializes pipeline on /pipeline:run, Stop drives step continuation.",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/trigger_pipeline.js"]
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/check_pipeline.js"]
+          }
+        ]
+      }
+    ]
+  }
+}
