@@ -70,6 +70,7 @@ process.stdin.on('end', () => {
       buildAgentUpdateBlock(sessionId, current, step.next || '');
   }
 
+  process.stderr.write(header + '\n');
   process.stdout.write(output + '\n');
   process.exit(2);
 });

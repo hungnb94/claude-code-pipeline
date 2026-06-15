@@ -88,6 +88,7 @@ process.stdin.on('end', () => {
   });
 
   const stepOutput = buildStepOutput(sessionId, config.entry, entryStep, { user_requirements: userRequirements }, []);
+  process.stderr.write(buildProgressHeader([], config.entry) + '\n');
   process.stdout.write(
     `Pipeline initialized from '${pipelineFile}'. Entry: '${config.entry}'.\n\n` +
     stepOutput + '\n'

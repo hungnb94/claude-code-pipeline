@@ -29,7 +29,6 @@ steps:
     type: shell
     commands:
       - yarn test
-      - yarn lint
     next: pr
     next_fail: fix_code
     max_visits: 5

@@ -124,7 +124,7 @@ Use `max_visits: N` on any step to halt the pipeline with an error if the step i
 
 - **Trigger**: typing `/pipeline:run` fires a `UserPromptSubmit` hook that reads the YAML, initializes pipeline state at `.pipeline/state.json`, and injects the first step's instructions into the conversation.
 - **Continuation**: after each Claude response, a `Stop` hook reads the current step from state and injects the next step's instructions — no user input required between steps.
-- **Progress header**: every step output begins with a progress line showing completed steps (✅) and the current step (🔄), e.g. `✅ plan → ✅ review → 🔄 implement`, so you always know where the pipeline is.
+- **Progress header**: each step emits a progress line showing completed steps (✅) and the current step (🔄), e.g. `✅ plan → ✅ review → 🔄 implement`. This appears as a visible notification in the Claude Code UI (via stderr) before Claude's response, so you always know where the pipeline is.
 - **State**: pipeline state is stored per-session in `.pipeline/state.json`. Multiple concurrent sessions in the same project are isolated by session ID.
 
 > **Note:** Both hooks require the `CLAUDE_PROJECT_DIR` environment variable to be set to the project root. Claude Code sets this automatically when running hooks — if you run hooks manually for debugging, set the variable explicitly: `CLAUDE_PROJECT_DIR=$(pwd) node hooks/check_pipeline.js`.
