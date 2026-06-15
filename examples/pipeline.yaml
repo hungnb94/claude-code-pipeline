@@ -24,8 +24,7 @@ steps:
   verify:
     type: shell
     commands:
-      - yarn build
-      - yarn test --ci
+      - yarn test
       - yarn lint
     next: review
     next_fail: fix_code
@@ -33,9 +32,8 @@ steps:
 
   fix_code:
     type: agent
-    agent: opencode
     prompt: |
-      Fix the errors below. Only touch related files, do not refactor.
+      Fix the errors below. Only touch related files.
       Errors: {{verify_output}}
     next: verify
 
@@ -49,4 +47,3 @@ steps:
     type: agent
     prompt: |
       Session complete. Summarize what was implemented and update docs.
-    terminal: true
