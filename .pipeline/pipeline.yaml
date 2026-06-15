@@ -44,7 +44,7 @@ steps:
     type: shell
     commands:
       - npm run lint
-    next: bump_version
+    next: validate_plugin
     next_fail: fix_lint
     max_visits: 9
 
@@ -53,6 +53,22 @@ steps:
     prompt: |
       Run `npm run lint` to see current lint errors. Fix all violations. Only touch files with errors. Do not change logic. After fixing, run `npm run format` to apply Prettier formatting.
     next: verify
+    max_visits: 9
+
+  validate_plugin:
+    type: shell
+    commands:
+      - claude plugin validate .
+    next: bump_version
+    next_fail: fix_plugin
+    max_visits: 9
+
+  fix_plugin:
+    type: agent
+    prompt: |
+      The plugin validation failed. Fix the errors in .claude-plugin/plugin.json and .claude-plugin/marketplace.json to make `claude plugin validate .` pass.
+      Errors: {{validate_plugin_output}}
+    next: validate_plugin
     max_visits: 9
 
   bump_version:

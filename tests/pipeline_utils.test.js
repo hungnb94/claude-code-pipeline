@@ -178,14 +178,33 @@ describe('default pipeline routing', () => {
     expect(pipeline.steps.fix_code.next).toBe('verify');
   });
 
-  it('lint routes to bump_version on success', () => {
+  it('lint routes to validate_plugin on success', () => {
     const yaml = fs.readFileSync(
       path.resolve(__dirname, '../.pipeline/pipeline.yaml'),
       'utf8'
     );
     const pipeline = parseYAML(yaml);
-    expect(pipeline.steps.lint.next).toBe('bump_version');
+    expect(pipeline.steps.lint.next).toBe('validate_plugin');
     expect(pipeline.steps.lint.next_fail).toBe('fix_lint');
+  });
+
+  it('validate_plugin routes to bump_version on success and fix_plugin on failure', () => {
+    const yaml = fs.readFileSync(
+      path.resolve(__dirname, '../.pipeline/pipeline.yaml'),
+      'utf8'
+    );
+    const pipeline = parseYAML(yaml);
+    expect(pipeline.steps.validate_plugin.next).toBe('bump_version');
+    expect(pipeline.steps.validate_plugin.next_fail).toBe('fix_plugin');
+  });
+
+  it('fix_plugin routes back to validate_plugin', () => {
+    const yaml = fs.readFileSync(
+      path.resolve(__dirname, '../.pipeline/pipeline.yaml'),
+      'utf8'
+    );
+    const pipeline = parseYAML(yaml);
+    expect(pipeline.steps.fix_plugin.next).toBe('validate_plugin');
   });
 
   it('fix_lint routes back to verify (re-runs tests after lint fix)', () => {
