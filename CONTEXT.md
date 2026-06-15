@@ -17,7 +17,16 @@ A JSON file at `.pipeline/state.json` tracking runtime execution: current step, 
 A key-value store within pipeline state used to pass output from one step to the next. Keys follow the pattern `<step_name>_output`. Only inter-step outputs are stored here — the requirement is not stored; Claude uses conversation context directly.
 
 ### Trigger
-The `/run-pipeline [yaml]` user input that initiates pipeline execution. Detected by the `UserPromptSubmit` hook, which initializes state and transforms the prompt so Claude begins executing step 1 immediately.
+The `/pipeline:run [yaml]` user input that initiates pipeline execution. Detected by the `UserPromptSubmit` hook, which initializes state and transforms the prompt so Claude begins executing step 1 immediately.
+
+### Plugin
+A self-contained directory distributed via git that extends Claude Code with skills, hooks, and agents. Installed globally via `/plugin install github:<owner>/<repo>` — works across all projects without per-project setup.
+
+### Plugin Manifest
+The file at `.claude-plugin/plugin.json` that defines the plugin's `name`, `description`, and `version`. The `name` field determines the skill namespace prefix (e.g., `name: "pipeline"` → skill `/pipeline:run`).
+
+### Plugin Root
+The directory where Claude Code installs a plugin. Referenced in hook commands via `${CLAUDE_PLUGIN_ROOT}`. Changes on plugin updates — persistent data should use `${CLAUDE_PLUGIN_DATA}` instead.
 
 ### Continuation
 The mechanism by which subsequent steps are driven after step 1. The `Stop` hook detects an active pipeline (`mode === "pipeline"`), reads the current step from state, renders its prompt, and injects it — causing Claude to execute the next step without user intervention.
