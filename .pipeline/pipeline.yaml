@@ -29,7 +29,7 @@ steps:
     type: shell
     commands:
       - yarn test
-    next: pr
+    next: bump_version
     next_fail: fix_code
     max_visits: 5
 
@@ -38,7 +38,25 @@ steps:
     prompt: |
       Fix the errors below. Only touch related files.
       Errors: {{verify_output}}
+    next: bump_version
+
+  bump_version:
+    type: agent
+    prompt: |
+      Analyze all changes made in this pipeline run and decide the appropriate semantic version bump for this project.
+
+      Versioning rules (you decide which applies):
+      - major (X.0.0): breaking changes — existing behavior removed or incompatible API changes
+      - minor (x.Y.0): new functionality added in a backward-compatible way
+      - patch (x.y.Z): bug fixes, refactors, docs, or other non-functional changes
+
+      Steps:
+      1. Read the current version from package.json
+      2. Run `git diff main --name-only` to see which files changed, then read the commit messages with `git log main..HEAD --oneline` to understand what was done
+      3. Choose the appropriate bump level and justify it in one sentence
+      4. Update the version field in both package.json and .claude-plugin/plugin.json to the new version
     next: pr
+    max_visits: 3
 
   pr:
     type: agent
