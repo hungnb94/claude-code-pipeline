@@ -1,5 +1,3 @@
-'use strict';
-
 const { spawnSync } = require('child_process');
 const { randomUUID } = require('crypto');
 const fs = require('fs');

@@ -1,5 +1,3 @@
-'use strict';
-
 const path = require('path');
 
 // Must be set before requiring pipeline_utils.js so the CLAUDE_PROJECT_DIR guard doesn't fire.
