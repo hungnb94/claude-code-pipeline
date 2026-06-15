@@ -28,7 +28,7 @@ steps:
   verify:
     type: shell
     commands:
-      - yarn test
+      - npm test
     next: lint
     next_fail: fix_code
     max_visits: 9
@@ -53,7 +53,7 @@ steps:
     prompt: |
       Run `npm run lint` to see current lint errors. Fix all violations. Only touch files with errors. Do not change logic.
     next: verify
-    max_visits: 6
+    max_visits: 3
 
   bump_version:
     type: agent

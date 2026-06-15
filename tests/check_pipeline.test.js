@@ -111,7 +111,7 @@ describe('check_pipeline.js', () => {
     expect(result.stdout).toContain(
       "Pipeline active — current step: 'verify' (type=shell)"
     );
-    expect(result.stdout).toContain('yarn test');
+    expect(result.stdout).toContain('npm test');
   });
 
   it('exits 2 with error when step visit count reaches max_visits', () => {
