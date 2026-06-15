@@ -11,9 +11,27 @@ steps:
     type: agent
     prompt: |
       Act as a independent reviewer review implementation plan and create better plan
-    next: execute
+    next: implementation
 
-  execute:
+  implementation:
     type: agent
     prompt: |
       Dispatch subagents to implement implementation plan
+    next: docs
+
+  docs:
+    type: agent
+    prompt: |
+      Update docs (README.md, CONTEXT.md, docs/*.md) to reflect chagnes
+    next: pr
+
+  pr:
+    type: agent
+    prompt: |
+      Create/Update PR based on changes
+    next: review_pr
+
+  review_pr:
+    type: agent
+    prompt: |
+      Review pull request and auto fix found issues
