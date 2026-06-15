@@ -23,6 +23,22 @@ steps:
     type: agent
     prompt: |
       Update docs (README.md, CONTEXT.md, docs/*.md) to reflect chagnes
+    next: verify
+
+  verify:
+    type: shell
+    commands:
+      - yarn test
+      - yarn lint
+    next: pr
+    next_fail: fix_code
+    max_visits: 5
+
+  fix_code:
+    type: agent
+    prompt: |
+      Fix the errors below. Only touch related files.
+      Errors: {{verify_output}}
     next: pr
 
   pr:
