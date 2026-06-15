@@ -22,7 +22,7 @@ function runHook(prompt, sessionId) {
 }
 
 function readSessionState(sessionId) {
-  if (!fs.existsSync(STATE_PATH)) return null;
+  if (!fs.existsSync(STATE_PATH)) {return null;}
   try {
     const all = JSON.parse(fs.readFileSync(STATE_PATH, 'utf8'));
     return all[sessionId] || null;
@@ -32,7 +32,7 @@ function readSessionState(sessionId) {
 }
 
 function cleanupSession(sessionId) {
-  if (!fs.existsSync(STATE_PATH)) return;
+  if (!fs.existsSync(STATE_PATH)) {return;}
   try {
     const all = JSON.parse(fs.readFileSync(STATE_PATH, 'utf8'));
     delete all[sessionId];

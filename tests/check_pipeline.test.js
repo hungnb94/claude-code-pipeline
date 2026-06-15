@@ -22,7 +22,9 @@ function setSessionState(sessionId, state) {
   if (fs.existsSync(STATE_PATH)) {
     try {
       all = JSON.parse(fs.readFileSync(STATE_PATH, 'utf8'));
-    } catch {}
+    } catch {
+      // ignore parse errors on corrupt state file
+    }
   }
   all[sessionId] = state;
   fs.mkdirSync(path.dirname(STATE_PATH), { recursive: true });
@@ -30,12 +32,14 @@ function setSessionState(sessionId, state) {
 }
 
 function cleanupSession(sessionId) {
-  if (!fs.existsSync(STATE_PATH)) return;
+  if (!fs.existsSync(STATE_PATH)) {return;}
   try {
     const all = JSON.parse(fs.readFileSync(STATE_PATH, 'utf8'));
     delete all[sessionId];
     fs.writeFileSync(STATE_PATH, JSON.stringify(all, null, 2));
-  } catch {}
+  } catch {
+    // ignore errors during cleanup
+  }
 }
 
 describe('check_pipeline.js', () => {

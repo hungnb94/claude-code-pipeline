@@ -30,7 +30,7 @@ function buildEntry(data) {
       entry.tool = data.tool_name;
       entry.exit_code = data.tool_output?.exit_code;
       if (data.tool_output?.stderr)
-        entry.stderr = truncate(data.tool_output.stderr, 200);
+        {entry.stderr = truncate(data.tool_output.stderr, 200);}
       break;
     case 'UserPromptSubmit':
       entry.prompt = data.prompt ? truncate(data.prompt) : undefined;

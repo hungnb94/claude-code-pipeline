@@ -12,11 +12,11 @@ const PROJECT_ROOT =
 const STATE_PATH = path.join(PROJECT_ROOT, '.pipeline/state.json');
 
 function parseScalar(s) {
-  if (s === 'true') return true;
-  if (s === 'false') return false;
-  if (s === 'null' || s === '~') return null;
+  if (s === 'true') {return true;}
+  if (s === 'false') {return false;}
+  if (s === 'null' || s === '~') {return null;}
   const n = Number(s);
-  if (!isNaN(n) && s !== '') return n;
+  if (!isNaN(n) && s !== '') {return n;}
   if (
     (s.startsWith('"') && s.endsWith('"')) ||
     (s.startsWith("'") && s.endsWith("'"))
@@ -45,7 +45,7 @@ function parseYAML(text) {
       }
       const lineIndent = raw.match(/^(\s*)/)[1].length;
       if (lineIndent > blockBaseIndent) {
-        if (blockDetectedIndent === -1) blockDetectedIndent = lineIndent;
+        if (blockDetectedIndent === -1) {blockDetectedIndent = lineIndent;}
         blockLines.push(raw.slice(blockDetectedIndent));
         continue;
       }
@@ -55,10 +55,10 @@ function parseYAML(text) {
       blockTarget = null;
     }
     const trimmed = raw.trim();
-    if (trimmed === '' || trimmed.startsWith('#')) continue;
+    if (trimmed === '' || trimmed.startsWith('#')) {continue;}
     const indent = raw.match(/^(\s*)/)[1].length;
     while (stack.length > 1 && stack[stack.length - 1].indent >= indent)
-      stack.pop();
+      {stack.pop();}
     const parent = stack[stack.length - 1].obj;
 
     if (trimmed.startsWith('- ')) {
@@ -79,7 +79,7 @@ function parseYAML(text) {
     }
 
     const colonIdx = trimmed.indexOf(':');
-    if (colonIdx === -1) continue;
+    if (colonIdx === -1) {continue;}
     const key = trimmed.slice(0, colonIdx).trim();
     const rest = trimmed.slice(colonIdx + 1).trim();
     if (rest === '|' || rest === '|-' || rest === '|+') {
@@ -103,7 +103,7 @@ function parseYAML(text) {
     }
   }
   if (blockKey !== null)
-    blockTarget[blockKey] = blockLines.join('\n').replace(/\n*$/, '\n');
+    {blockTarget[blockKey] = blockLines.join('\n').replace(/\n*$/, '\n');}
   return root;
 }
 
@@ -116,7 +116,7 @@ function render(template, sharedState) {
 }
 
 function readAllStates() {
-  if (!fs.existsSync(STATE_PATH)) return {};
+  if (!fs.existsSync(STATE_PATH)) {return {};}
   try {
     return JSON.parse(fs.readFileSync(STATE_PATH, 'utf8'));
   } catch {

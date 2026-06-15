@@ -57,7 +57,7 @@ process.stdin.on('end', () => {
   }
 
   const prompt = (data.prompt || '').trim();
-  if (!prompt.startsWith('/pipeline:run')) process.exit(0);
+  if (!prompt.startsWith('/pipeline:run')) {process.exit(0);}
 
   const sessionId = data.session_id || 'unknown';
   const args = prompt.slice('/pipeline:run'.length).trim();
