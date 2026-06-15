@@ -1,0 +1,140 @@
+'use strict';
+
+const fs = require('fs');
+const path = require('path');
+
+const PROJECT_ROOT = path.resolve(__dirname, '../..');
+const STATE_PATH = path.join(PROJECT_ROOT, '.pipeline/state.json');
+
+function parseScalar(s) {
+  if (s === 'true') return true;
+  if (s === 'false') return false;
+  if (s === 'null' || s === '~') return null;
+  const n = Number(s);
+  if (!isNaN(n) && s !== '') return n;
+  if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
+    return s.slice(1, -1);
+  }
+  return s;
+}
+
+function parseYAML(text) {
+  const lines = text.split('\n');
+  const root = {};
+  const stack = [{ obj: root, indent: -1 }];
+  let blockKey = null, blockBaseIndent = 0, blockDetectedIndent = -1, blockLines = [], blockTarget = null;
+
+  for (const raw of lines) {
+    if (blockKey !== null) {
+      const trimmed = raw.trim();
+      if (trimmed === '') { blockLines.push(''); continue; }
+      const lineIndent = raw.match(/^(\s*)/)[1].length;
+      if (lineIndent > blockBaseIndent) {
+        if (blockDetectedIndent === -1) blockDetectedIndent = lineIndent;
+        blockLines.push(raw.slice(blockDetectedIndent));
+        continue;
+      }
+      blockTarget[blockKey] = blockLines.join('\n').replace(/\n*$/, '\n');
+      blockKey = null; blockLines = []; blockTarget = null;
+    }
+    const trimmed = raw.trim();
+    if (trimmed === '' || trimmed.startsWith('#')) continue;
+    const indent = raw.match(/^(\s*)/)[1].length;
+    while (stack.length > 1 && stack[stack.length - 1].indent >= indent) stack.pop();
+    const parent = stack[stack.length - 1].obj;
+    const colonIdx = trimmed.indexOf(':');
+    if (colonIdx === -1) continue;
+    const key = trimmed.slice(0, colonIdx).trim();
+    const rest = trimmed.slice(colonIdx + 1).trim();
+    if (rest === '|' || rest === '|-' || rest === '|+') {
+      blockKey = key; blockBaseIndent = indent; blockDetectedIndent = -1; blockLines = []; blockTarget = parent;
+    } else if (rest === '') {
+      const obj = {}; parent[key] = obj; stack.push({ obj, indent });
+    } else if (rest.startsWith('[') && rest.endsWith(']')) {
+      parent[key] = rest.slice(1, -1).split(',').map(s => s.trim()).filter(Boolean);
+    } else {
+      parent[key] = parseScalar(rest);
+    }
+  }
+  if (blockKey !== null) blockTarget[blockKey] = blockLines.join('\n').replace(/\n*$/, '\n');
+  return root;
+}
+
+function render(template, sharedState) {
+  return template.replace(/\{\{(\w+)\}\}/g, (_, key) =>
+    Object.prototype.hasOwnProperty.call(sharedState, key) ? String(sharedState[key]) : `{{${key}}}`
+  );
+}
+
+function readAllStates() {
+  if (!fs.existsSync(STATE_PATH)) return {};
+  try { return JSON.parse(fs.readFileSync(STATE_PATH, 'utf8')); } catch { return {}; }
+}
+
+function writeAllStates(states) {
+  fs.mkdirSync(path.dirname(STATE_PATH), { recursive: true });
+  fs.writeFileSync(STATE_PATH, JSON.stringify(states, null, 2));
+}
+
+function getSessionState(sessionId) {
+  return readAllStates()[sessionId] || null;
+}
+
+function setSessionState(sessionId, sessionState) {
+  const all = readAllStates();
+  all[sessionId] = sessionState;
+  writeAllStates(all);
+}
+
+// Generates the bash+python block Claude must run after completing an agent step.
+// If next is empty, sets mode='free' instead of advancing current_step.
+function buildAgentUpdateBlock(sessionId, stepName, next) {
+  const advance = next
+    ? `sess['current_step'] = '${next}'`
+    : `sess['mode'] = 'free'`;
+  const py = [
+    `import json; from pathlib import Path`,
+    `p = Path('.pipeline/state.json')`,
+    `s = json.loads(p.read_text())`,
+    `sess = s['${sessionId}']`,
+    `sess['completed_steps'].append('${stepName}')`,
+    `sess.setdefault('visit_counts', {})`,
+    `sess['visit_counts']['${stepName}'] = sess['visit_counts'].get('${stepName}', 0) + 1`,
+    `sess['shared_state']['${stepName}_output'] = 'REPLACE_WITH_ONE_LINE_SUMMARY'`,
+    advance,
+    `p.write_text(json.dumps(s, indent=2))`,
+  ].join('\n');
+  return (
+    `After completing your response, advance the pipeline by running:\n\n` +
+    `\`\`\`bash\npython3 -c "\n${py}\n"\n\`\`\``
+  );
+}
+
+// Generates the bash+python blocks Claude must run after a shell step.
+// Provides separate commands for success (exit 0) and failure (non-zero exit).
+function buildShellUpdateBlock(sessionId, stepName, next, nextFail) {
+  const baseLines = [
+    `import json; from pathlib import Path`,
+    `p = Path('.pipeline/state.json')`,
+    `s = json.loads(p.read_text())`,
+    `sess = s['${sessionId}']`,
+    `sess['completed_steps'].append('${stepName}')`,
+    `sess.setdefault('visit_counts', {})`,
+    `sess['visit_counts']['${stepName}'] = sess['visit_counts'].get('${stepName}', 0) + 1`,
+  ];
+  const successLine = next ? `sess['current_step'] = '${next}'` : `sess['mode'] = 'free'`;
+  const failLine = nextFail ? `sess['current_step'] = '${nextFail}'` : `sess['mode'] = 'free'`;
+  const pySuccess = [...baseLines, successLine, `p.write_text(json.dumps(s, indent=2))`].join('\n');
+  const pyFail    = [...baseLines, failLine,    `p.write_text(json.dumps(s, indent=2))`].join('\n');
+  return (
+    `If ALL commands exit 0, run:\n\`\`\`bash\npython3 -c "\n${pySuccess}\n"\n\`\`\`\n\n` +
+    `If ANY command fails, run:\n\`\`\`bash\npython3 -c "\n${pyFail}\n"\n\`\`\``
+  );
+}
+
+module.exports = {
+  parseYAML, render,
+  readAllStates, writeAllStates, getSessionState, setSessionState,
+  buildAgentUpdateBlock, buildShellUpdateBlock,
+  PROJECT_ROOT, STATE_PATH,
+};
