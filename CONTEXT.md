@@ -14,7 +14,7 @@ A single unit of work in a pipeline. Two types:
 A JSON file at `.pipeline/state.json` tracking runtime execution: current step, completed steps, visit counts, and shared state (inter-step outputs).
 
 ### Shared State
-A key-value store within pipeline state used to pass output from one step to the next. Keys follow the pattern `<step_name>_output`. Only inter-step outputs are stored here — the requirement is not stored; Claude uses conversation context directly.
+A key-value store within pipeline state used to pass data between steps. Keys follow the pattern `<step_name>_output` for inter-step outputs. The key `user_requirements` is always present — it holds the inline requirements text the user supplied when invoking `/pipeline:run`, or an empty string if none was given. Steps reference values via `{{key}}` placeholders in their `prompt` field.
 
 ### Trigger
 The `/pipeline:run [yaml]` user input that initiates pipeline execution. Detected by the `UserPromptSubmit` hook, which initializes state and transforms the prompt so Claude begins executing step 1 immediately.
