@@ -19,6 +19,7 @@ function runHook(prompt, sessionId) {
     input,
     encoding: 'utf8',
     cwd: PROJECT_ROOT,
+    env: { ...process.env, CLAUDE_PROJECT_DIR: PROJECT_ROOT },
   });
 }
 

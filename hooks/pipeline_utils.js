@@ -3,7 +3,10 @@
 const fs = require('fs');
 const path = require('path');
 
-const PROJECT_ROOT = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+const PROJECT_ROOT = process.env.CLAUDE_PROJECT_DIR || (() => {
+  process.stderr.write('pipeline: CLAUDE_PROJECT_DIR is not set — cannot locate state file\n');
+  process.exit(1);
+})();
 const STATE_PATH = path.join(PROJECT_ROOT, '.pipeline/state.json');
 
 function parseScalar(s) {
