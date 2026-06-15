@@ -1,0 +1,23 @@
+{
+  "name": "claude-code-pipeline",
+  "owner": {
+    "name": "Hung Nguyen",
+    "email": "hung@bio-rithm.com"
+  },
+  "description": "Multi-step automated pipelines for Claude Code",
+  "plugins": [
+    {
+      "name": "pipeline",
+      "source": {
+        "source": "github",
+        "repo": "hungnb94/claude-code-pipeline"
+      },
+      "description": "Run multi-step automated pipelines in Claude Code. Define agent and shell steps in YAML, trigger with /pipeline:run.",
+      "author": {
+        "name": "Hung Nguyen"
+      },
+      "license": "MIT",
+      "repository": "https://github.com/hungnb94/claude-code-pipeline"
+    }
+  ]
+}

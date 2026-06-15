@@ -11,7 +11,7 @@ Three realistic options existed:
 
 1. **npm package with postinstall** — `npm install -g claude-code-pipeline` runs a script that copies hooks to `~/.claude/hooks/` and merges entries into `~/.claude/settings.json`.
 2. **MCP server** — wrap the pipeline engine as an MCP server exposing tools (`run_pipeline`, `advance_step`, etc.). Users configure via `claude mcp add`.
-3. **Native Claude Code plugin** — a git repo with `.claude-plugin/plugin.json`, `hooks/hooks.json`, and `skills/`. Installed via `/plugin install github:hungnb94/claude-code-pipeline`.
+3. **Native Claude Code plugin** — a git repo with `.claude-plugin/plugin.json`, `hooks/hooks.json`, and `skills/`. Distributed via a marketplace catalog (`marketplace.json`); installed with `/plugin marketplace add` + `/plugin install`.
 
 ## Decision
 
@@ -29,4 +29,4 @@ Use the **native Claude Code plugin format**.
 
 - `hooks/hooks.json` uses `${CLAUDE_PLUGIN_ROOT}` to locate the hook executable (e.g. `node ${CLAUDE_PLUGIN_ROOT}/hooks/check_pipeline.js`). Inside the hook scripts, project-relative paths are resolved using `CLAUDE_PROJECT_DIR`, which Claude Code sets to the user's project root when invoking hooks.
 - Skills are namespaced: `/pipeline:run` instead of `/run-pipeline`. This is a breaking change for existing users of the standalone configuration.
-- Distribution is git-first (`/plugin install github:hungnb94/claude-code-pipeline`). Community marketplace submission is a separate future step.
+- Distribution is git-first via a self-contained marketplace: the repo itself serves as both the marketplace catalog (`.claude-plugin/marketplace.json`) and the plugin source. Install is two commands: `/plugin marketplace add hungnb94/claude-code-pipeline` then `/plugin install pipeline@claude-code-pipeline`.
