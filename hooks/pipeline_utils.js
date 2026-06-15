@@ -158,9 +158,18 @@ function buildShellUpdateBlock(sessionId, stepName, next, nextFail) {
   );
 }
 
+function buildProgressHeader(completedSteps, currentStep) {
+  const parts = [
+    ...(completedSteps || []).map(s => `✅ ${s}`),
+    `🔄 ${currentStep}`,
+  ];
+  return parts.join(' → ');
+}
+
 module.exports = {
   parseYAML, render,
   readAllStates, writeAllStates, getSessionState, setSessionState,
   buildAgentUpdateBlock, buildShellUpdateBlock,
+  buildProgressHeader,
   PROJECT_ROOT, STATE_PATH,
 };

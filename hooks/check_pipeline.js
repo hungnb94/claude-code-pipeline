@@ -6,6 +6,7 @@ const {
   parseYAML, render,
   getSessionState, setSessionState,
   buildAgentUpdateBlock, buildShellUpdateBlock,
+  buildProgressHeader,
   PROJECT_ROOT,
 } = require('./pipeline_utils.js');
 
@@ -49,16 +50,21 @@ process.stdin.on('end', () => {
   const sharedState = state.shared_state || {};
   const stepType = step.type || 'agent';
 
+  const completedSteps = state.completed_steps || [];
+  const header = buildProgressHeader(completedSteps, current);
+
   let output;
   if (stepType === 'shell') {
     const cmds = (step.commands || []).map(c => `  ${c}`).join('\n');
     output =
+      `${header}\n\n` +
       `Pipeline active — current step: '${current}' (type=shell).\n\n` +
       `Run these commands in sequence:\n${cmds}\n\n` +
       buildShellUpdateBlock(sessionId, current, step.next || '', step.next_fail || '');
   } else {
     const prompt = render(step.prompt || '', sharedState);
     output =
+      `${header}\n\n` +
       `Pipeline active — current step: '${current}' (type=agent).\n\n` +
       `Execute the following prompt:\n---\n${prompt.trim()}\n---\n\n` +
       buildAgentUpdateBlock(sessionId, current, step.next || '');
