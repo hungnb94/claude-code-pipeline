@@ -21,7 +21,8 @@ function parseScalar(s) {
 function parseYAML(text) {
   const lines = text.split('\n');
   const root = {};
-  const stack = [{ obj: root, indent: -1 }];
+  // Stack entries: { obj, indent, key } where key is the key used to reach obj from parent
+  const stack = [{ obj: root, indent: -1, key: null }];
   let blockKey = null, blockBaseIndent = 0, blockDetectedIndent = -1, blockLines = [], blockTarget = null;
 
   for (const raw of lines) {
@@ -42,6 +43,27 @@ function parseYAML(text) {
     const indent = raw.match(/^(\s*)/)[1].length;
     while (stack.length > 1 && stack[stack.length - 1].indent >= indent) stack.pop();
     const parent = stack[stack.length - 1].obj;
+
+    // Handle block sequence items (- value)
+    if (trimmed.startsWith('- ')) {
+      const value = parseScalar(trimmed.slice(2).trim());
+      // The current stack top is the array container (an empty {} placeholder).
+      // We need to replace it with an actual array on the grandparent.
+      if (stack.length >= 2) {
+        const top = stack[stack.length - 1];
+        const grandparent = stack[stack.length - 2].obj;
+        const arrKey = top.key;
+        if (arrKey !== null && !Array.isArray(grandparent[arrKey])) {
+          grandparent[arrKey] = [];
+          top.obj = grandparent[arrKey];
+        }
+        if (arrKey !== null && Array.isArray(grandparent[arrKey])) {
+          grandparent[arrKey].push(value);
+        }
+      }
+      continue;
+    }
+
     const colonIdx = trimmed.indexOf(':');
     if (colonIdx === -1) continue;
     const key = trimmed.slice(0, colonIdx).trim();
@@ -49,7 +71,7 @@ function parseYAML(text) {
     if (rest === '|' || rest === '|-' || rest === '|+') {
       blockKey = key; blockBaseIndent = indent; blockDetectedIndent = -1; blockLines = []; blockTarget = parent;
     } else if (rest === '') {
-      const obj = {}; parent[key] = obj; stack.push({ obj, indent });
+      const obj = {}; parent[key] = obj; stack.push({ obj, indent, key });
     } else if (rest.startsWith('[') && rest.endsWith(']')) {
       parent[key] = rest.slice(1, -1).split(',').map(s => s.trim()).filter(Boolean);
     } else {
@@ -86,21 +108,28 @@ function setSessionState(sessionId, sessionState) {
   writeAllStates(all);
 }
 
+function escapeForPython(s) {
+  return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
 // Generates the bash+python block Claude must run after completing an agent step.
 // If next is empty, sets mode='free' instead of advancing current_step.
 function buildAgentUpdateBlock(sessionId, stepName, next) {
+  const sid = escapeForPython(sessionId);
+  const sname = escapeForPython(stepName);
+  const nextSafe = next ? escapeForPython(next) : '';
   const advance = next
-    ? `sess['current_step'] = '${next}'`
+    ? `sess['current_step'] = '${nextSafe}'`
     : `sess['mode'] = 'free'`;
   const py = [
     `import json; from pathlib import Path`,
     `p = Path('.pipeline/state.json')`,
     `s = json.loads(p.read_text())`,
-    `sess = s['${sessionId}']`,
-    `sess['completed_steps'].append('${stepName}')`,
+    `sess = s['${sid}']`,
+    `sess['completed_steps'].append('${sname}')`,
     `sess.setdefault('visit_counts', {})`,
-    `sess['visit_counts']['${stepName}'] = sess['visit_counts'].get('${stepName}', 0) + 1`,
-    `sess['shared_state']['${stepName}_output'] = 'REPLACE_WITH_ONE_LINE_SUMMARY'`,
+    `sess['visit_counts']['${sname}'] = sess['visit_counts'].get('${sname}', 0) + 1`,
+    `sess['shared_state']['${sname}_output'] = 'REPLACE_WITH_ONE_LINE_SUMMARY'`,
     advance,
     `p.write_text(json.dumps(s, indent=2))`,
   ].join('\n');
@@ -113,17 +142,21 @@ function buildAgentUpdateBlock(sessionId, stepName, next) {
 // Generates the bash+python blocks Claude must run after a shell step.
 // Provides separate commands for success (exit 0) and failure (non-zero exit).
 function buildShellUpdateBlock(sessionId, stepName, next, nextFail) {
+  const sid = escapeForPython(sessionId);
+  const sname = escapeForPython(stepName);
+  const nextSafe = next ? escapeForPython(next) : '';
+  const nextFailSafe = nextFail ? escapeForPython(nextFail) : '';
   const baseLines = [
     `import json; from pathlib import Path`,
     `p = Path('.pipeline/state.json')`,
     `s = json.loads(p.read_text())`,
-    `sess = s['${sessionId}']`,
-    `sess['completed_steps'].append('${stepName}')`,
+    `sess = s['${sid}']`,
+    `sess['completed_steps'].append('${sname}')`,
     `sess.setdefault('visit_counts', {})`,
-    `sess['visit_counts']['${stepName}'] = sess['visit_counts'].get('${stepName}', 0) + 1`,
+    `sess['visit_counts']['${sname}'] = sess['visit_counts'].get('${sname}', 0) + 1`,
   ];
-  const successLine = next ? `sess['current_step'] = '${next}'` : `sess['mode'] = 'free'`;
-  const failLine = nextFail ? `sess['current_step'] = '${nextFail}'` : `sess['mode'] = 'free'`;
+  const successLine = next ? `sess['current_step'] = '${nextSafe}'` : `sess['mode'] = 'free'`;
+  const failLine = nextFail ? `sess['current_step'] = '${nextFailSafe}'` : `sess['mode'] = 'free'`;
   const pySuccess = [...baseLines, successLine, `p.write_text(json.dumps(s, indent=2))`].join('\n');
   const pyFail    = [...baseLines, failLine,    `p.write_text(json.dumps(s, indent=2))`].join('\n');
   return (

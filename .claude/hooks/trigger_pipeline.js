@@ -41,6 +41,11 @@ process.stdin.on('end', () => {
   const pipelineFile = args.endsWith('.yaml') ? args : '.pipeline/pipeline.yaml';
   const pipelinePath = path.join(PROJECT_ROOT, pipelineFile);
 
+  if (!pipelinePath.startsWith(PROJECT_ROOT + path.sep) && pipelinePath !== PROJECT_ROOT) {
+    process.stdout.write(`Pipeline file must be within the project root.\n`);
+    process.exit(1);
+  }
+
   if (!fs.existsSync(pipelinePath)) {
     process.stdout.write(`Pipeline file not found: ${pipelineFile}\n`);
     process.exit(1);
