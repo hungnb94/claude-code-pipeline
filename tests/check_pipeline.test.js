@@ -162,6 +162,48 @@ describe('check_pipeline.js', () => {
     expect(result.stderr).toContain('✅ clarify → 🔄 plan');
   });
 
+  it('writes prompt label and text to stderr for agent step', () => {
+    setSessionState(SESSION_ID, {
+      mode: 'pipeline',
+      pipeline: '.pipeline/pipeline.yaml',
+      current_step: 'plan',
+      completed_steps: [],
+      visit_counts: {},
+      shared_state: {},
+    });
+    const result = runHook(SESSION_ID);
+    expect(result.stderr).toContain('Prompt:');
+    expect(result.stderr).toContain('Writing a step-by-step implementation plan.');
+  });
+
+  it('writes commands label and command text to stderr for shell step', () => {
+    setSessionState(SESSION_ID, {
+      mode: 'pipeline',
+      pipeline: '.pipeline/pipeline.yaml',
+      current_step: 'verify',
+      completed_steps: [],
+      visit_counts: {},
+      shared_state: {},
+    });
+    const result = runHook(SESSION_ID);
+    expect(result.stderr).toContain('Commands:');
+    expect(result.stderr).toContain('npm test');
+  });
+
+  it('renders template variables in stderr and does not emit raw tokens', () => {
+    setSessionState(SESSION_ID, {
+      mode: 'pipeline',
+      pipeline: 'examples/pipeline.yaml',
+      current_step: 'plan',
+      completed_steps: ['clarify'],
+      visit_counts: { clarify: 1 },
+      shared_state: { clarify_output: 'use postgres for storage' },
+    });
+    const result = runHook(SESSION_ID);
+    expect(result.stderr).toContain('use postgres for storage');
+    expect(result.stderr).not.toContain('{{clarify_output}}');
+  });
+
   it('exits 0 silently when pipeline file does not exist', () => {
     setSessionState(SESSION_ID, {
       mode: 'pipeline',
