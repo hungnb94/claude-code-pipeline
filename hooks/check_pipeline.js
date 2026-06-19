@@ -65,7 +65,7 @@ process.stdin.on('end', () => {
 
   const visits = (state.visit_counts || {})[current] || 0;
   if (step.max_visits && visits >= step.max_visits) {
-    process.stdout.write(
+    process.stderr.write(
       `Pipeline error: step '${current}' reached max_visits (${step.max_visits}). Pipeline halted.\n`
     );
     process.exit(2);
@@ -78,10 +78,8 @@ process.stdin.on('end', () => {
   const header = buildProgressHeader(completedSteps, current);
 
   let output;
-  let stderrInput;
   if (stepType === 'shell') {
     const cmds = (step.commands || []).map((c) => `  ${c}`).join('\n');
-    stderrInput = `Commands:\n${cmds}\n`;
     output =
       `${header}\n\n` +
       `Pipeline active — current step: '${current}' (type=shell).\n\n` +
@@ -94,7 +92,6 @@ process.stdin.on('end', () => {
       );
   } else {
     const prompt = render(step.prompt || '', sharedState);
-    stderrInput = `Prompt:\n---\n${prompt.trim()}\n---\n`;
     output =
       `${header}\n\n` +
       `Pipeline active — current step: '${current}' (type=agent).\n\n` +
@@ -102,8 +99,6 @@ process.stdin.on('end', () => {
       buildAgentUpdateBlock(sessionId, current, step.next || '');
   }
 
-  process.stderr.write(header + '\n');
-  process.stderr.write(stderrInput);
-  process.stdout.write(output + '\n');
+  process.stderr.write(output + '\n');
   process.exit(2);
 });
