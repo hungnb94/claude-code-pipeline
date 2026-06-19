@@ -85,12 +85,12 @@ describe('check_pipeline.js', () => {
     });
     const result = runHook(SESSION_ID);
     expect(result.status).toBe(2);
-    expect(result.stdout).toContain('🔄 plan');
+    expect(result.stdout).toBe('');
     expect(result.stderr).toContain('🔄 plan');
-    expect(result.stdout).toContain(
+    expect(result.stderr).toContain(
       "Pipeline active — current step: 'plan' (type=agent)"
     );
-    expect(result.stdout).toContain(
+    expect(result.stderr).toContain(
       'Writing a step-by-step implementation plan.'
     );
   });
@@ -106,16 +106,14 @@ describe('check_pipeline.js', () => {
     });
     const result = runHook(SESSION_ID);
     expect(result.status).toBe(2);
-    expect(result.stdout).toContain(
-      '✅ plan → ✅ review_plan → ✅ implementation → ✅ docs → 🔄 verify'
-    );
+    expect(result.stdout).toBe('');
     expect(result.stderr).toContain(
       '✅ plan → ✅ review_plan → ✅ implementation → ✅ docs → 🔄 verify'
     );
-    expect(result.stdout).toContain(
+    expect(result.stderr).toContain(
       "Pipeline active — current step: 'verify' (type=shell)"
     );
-    expect(result.stdout).toContain('npm test');
+    expect(result.stderr).toContain('npm test');
   });
 
   it('exits 2 with error when step visit count reaches max_visits', () => {
@@ -129,8 +127,9 @@ describe('check_pipeline.js', () => {
     });
     const result = runHook(SESSION_ID);
     expect(result.status).toBe(2);
-    expect(result.stdout).toContain('max_visits');
-    expect(result.stdout).toContain('Pipeline error');
+    expect(result.stdout).toBe('');
+    expect(result.stderr).toContain('max_visits');
+    expect(result.stderr).toContain('Pipeline error');
   });
 
   it('exits 0 and sets mode=free when current step has terminal:true', () => {
@@ -158,8 +157,51 @@ describe('check_pipeline.js', () => {
     });
     const result = runHook(SESSION_ID);
     expect(result.status).toBe(2);
-    expect(result.stdout).toContain('use postgres for storage');
+    expect(result.stdout).toBe('');
+    expect(result.stderr).toContain('use postgres for storage');
     expect(result.stderr).toContain('✅ clarify → 🔄 plan');
+  });
+
+  it('writes full agent step output to stderr', () => {
+    setSessionState(SESSION_ID, {
+      mode: 'pipeline',
+      pipeline: '.pipeline/pipeline.yaml',
+      current_step: 'plan',
+      completed_steps: [],
+      visit_counts: {},
+      shared_state: {},
+    });
+    const result = runHook(SESSION_ID);
+    expect(result.stderr).toContain('Execute the following prompt:');
+    expect(result.stderr).toContain('Writing a step-by-step implementation plan.');
+  });
+
+  it('writes full shell step output to stderr', () => {
+    setSessionState(SESSION_ID, {
+      mode: 'pipeline',
+      pipeline: '.pipeline/pipeline.yaml',
+      current_step: 'verify',
+      completed_steps: [],
+      visit_counts: {},
+      shared_state: {},
+    });
+    const result = runHook(SESSION_ID);
+    expect(result.stderr).toContain('Run these commands in sequence:');
+    expect(result.stderr).toContain('npm test');
+  });
+
+  it('renders template variables in output and does not emit raw tokens', () => {
+    setSessionState(SESSION_ID, {
+      mode: 'pipeline',
+      pipeline: 'examples/pipeline.yaml',
+      current_step: 'plan',
+      completed_steps: ['clarify'],
+      visit_counts: { clarify: 1 },
+      shared_state: { clarify_output: 'use postgres for storage' },
+    });
+    const result = runHook(SESSION_ID);
+    expect(result.stderr).toContain('use postgres for storage');
+    expect(result.stderr).not.toContain('{{clarify_output}}');
   });
 
   it('exits 0 silently when pipeline file does not exist', () => {

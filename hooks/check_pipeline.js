@@ -65,7 +65,7 @@ process.stdin.on('end', () => {
 
   const visits = (state.visit_counts || {})[current] || 0;
   if (step.max_visits && visits >= step.max_visits) {
-    process.stdout.write(
+    process.stderr.write(
       `Pipeline error: step '${current}' reached max_visits (${step.max_visits}). Pipeline halted.\n`
     );
     process.exit(2);
@@ -99,7 +99,6 @@ process.stdin.on('end', () => {
       buildAgentUpdateBlock(sessionId, current, step.next || '');
   }
 
-  process.stderr.write(header + '\n');
-  process.stdout.write(output + '\n');
+  process.stderr.write(output + '\n');
   process.exit(2);
 });
