@@ -13,18 +13,18 @@ Modifies the user's configured status line script to display pipeline state (pip
    - Look for the exact key `statusLine` (not `statusLine2` or any other variant - only `statusLine` works in Claude Code)
    - Extract the script file path from `statusLine.command` - it may be a plain path (`~/.claude/statusline.sh`) or a command with a runtime (`node ~/.claude/statusline.js`)
    - If no `statusLine` key is found, proceed to step 2 to create one
-   - If `statusLine` is found but the script file does not exist, proceed to step 2 to create the script (keep the existing settings entry)
+   - If `statusLine` is found but the script file does not exist, tell the user the configured script is missing and they should restore it manually, then stop
 
-2. If `statusLine` or its script is missing, create them:
+2. If `statusLine` was not found in any settings file, create it:
    - Write the default script to `~/.claude/statusline.sh` (see "Default script" below)
    - Make it executable: `chmod +x ~/.claude/statusline.sh`
    - Add `statusLine` to `~/.claude/settings.json` (global user settings):
      ```json
      {
-        "statusLine": {
-          "type": "command",
-          "command": "~/.claude/statusline.sh"
-        }
+       "statusLine": {
+         "type": "command",
+         "command": "~/.claude/statusline.sh"
+       }
      }
      ```
    - Tell the user what was created before continuing
