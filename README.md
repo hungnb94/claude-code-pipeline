@@ -162,3 +162,13 @@ See [`examples/pipeline.yaml`](examples/pipeline.yaml) for a full plan → execu
 ```
 /plugin uninstall pipeline@claude-code-pipeline
 ```
+
+## Development
+
+To test local changes to this plugin without publishing, load it directly from the repo root:
+
+```
+claude --plugin-dir .
+```
+
+This loads the plugin from your working directory. Any changes to hook scripts or skill files take effect on the next Claude Code session.
