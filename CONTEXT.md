@@ -68,6 +68,10 @@ A single file at `.pipeline/state.json` containing states for all sessions, keye
 
 The session ID is provided to hooks via hook input. Each session reads and writes only its own key.
 
+### Status Line Script
+
+A Node.js script (`hooks/statusline.js`) that Claude Code runs after each assistant message to populate the status bar at the bottom of the UI. It reads Pipeline State by session ID, derived from `workspace.project_dir` in the JSON data Claude Code pipes to stdin. Displays `Pipeline: <name> | Step: <current-step>` when a pipeline is active; silent otherwise. Auto-configured into the project's `.claude/settings.json` on the first Trigger if no `statusLine` entry already exists.
+
 ### Version
 
 The semantic version string (`major.minor.patch`) recorded in `package.json` and `.claude-plugin/plugin.json`. Both files must always hold the same value. The `bump_version` pipeline step is responsible for choosing and applying the correct bump level based on the nature of the changes in the current branch. If the version already differs from `origin/main`, the step skips the bump — ensuring at most one version bump per branch regardless of how many times the pipeline is run.
