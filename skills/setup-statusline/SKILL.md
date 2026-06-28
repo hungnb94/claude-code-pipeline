@@ -1,5 +1,5 @@
 ---
-description: Add pipeline state display to the user's configured Claude Code status line script. Reads the actual statusLine command from settings.json, adapts to the script's language and conventions. Idempotent — safe to run multiple times.
+description: Add pipeline state display to the user's configured Claude Code status line script. Reads the actual statusLine command from settings.json, adapts to the script's language and conventions. Idempotent - safe to run multiple times.
 ---
 
 # pipeline:setup-statusline
@@ -11,7 +11,7 @@ Modifies the user's configured status line script to display pipeline state (pip
 1. Find the configured status line script:
    - Check these settings files in precedence order (first match wins): `.claude/settings.local.json`, `.claude/settings.json`, `~/.claude/settings.local.json`, `~/.claude/settings.json`
    - Find the first file that contains a `statusLine.command` value
-   - Extract the script file path from the command — it may be a plain path (`~/.claude/statusline.sh`) or a command with a runtime (`node ~/.claude/statusline.js`)
+   - Extract the script file path from the command - it may be a plain path (`~/.claude/statusline.sh`) or a command with a runtime (`node ~/.claude/statusline.js`)
    - If no `statusLine` is configured in any settings file, tell the user and stop
 
 2. Read the script file. If it does not exist, tell the user and stop.
@@ -48,9 +48,9 @@ Modifies the user's configured status line script to display pipeline state (pip
 }
 ```
 
-- `pipeline` — relative path to the YAML file; strip directory and `.yaml` extension for the display name
-- `completed_steps[-1]` — the previous step (last completed)
-- `visit_counts[current_step]` — number of prior completions of the current step; `> 0` means it's a retry
+- `pipeline` - relative path to the YAML file; strip directory and `.yaml` extension for the display name
+- `completed_steps[-1]` - the previous step (last completed)
+- `visit_counts[current_step]` - number of prior completions of the current step; `> 0` means it's a retry
 
 ## Reference implementation (bash)
 
@@ -71,10 +71,10 @@ if [ -n "$SESSION_ID" ] && [ -n "$PROJECT_DIR" ]; then
       _VISITS=$(jq -r --arg s "$SESSION_ID" --arg c "$_CUR" '.[$s].visit_counts[$c] // 0' "$_PIPELINE_STATE" 2>/dev/null)
       _NAME="${_PL##*/}"; _NAME="${_NAME%.yaml}"
       _RETRY=""
-      if [ "${_VISITS:-0}" -gt 0 ] 2>/dev/null; then _RETRY=" ${RED}(×${_VISITS})${RESET}"; fi
+      if [ "${_VISITS:-0}" -gt 0 ]; then _RETRY=" ${RED}(×${_VISITS})${RESET}"; fi
       _PREV_PART=""
       if [ -n "$_PREV" ]; then _PREV_PART="${GREEN}✅ ${_PREV}${RESET} → "; fi
-      echo -e "${CYAN}[${_NAME}]${RESET} ${_PREV_PART}${YELLOW}🔄 ${_CUR}${RESET}${_RETRY}"
+      printf '%b\n' "${CYAN}[${_NAME}]${RESET} ${_PREV_PART}${YELLOW}🔄 ${_CUR}${RESET}${_RETRY}"
     fi
   fi
 fi
@@ -84,5 +84,5 @@ fi
 ## Notes
 
 - All internal variables should be prefixed or namespaced to avoid collisions with the host script
-- The block must be silent when no pipeline is active — no output, no errors
+- The block must be silent when no pipeline is active - no output, no errors
 - If the script's language makes it impractical to append a block (e.g. a compiled binary), tell the user and stop

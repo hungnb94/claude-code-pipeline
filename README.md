@@ -151,7 +151,7 @@ While a pipeline is active, your status line will show an extra line:
 [pipeline-name] ✅ verify → 🔄 fix (×3)   ← red retry count when looping
 ```
 
-The block is silent when no pipeline is running. Safe to run multiple times — idempotent.
+The block is silent when no pipeline is running. Safe to run multiple times - idempotent.
 
 ## Examples
 
