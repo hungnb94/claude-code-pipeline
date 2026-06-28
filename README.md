@@ -136,22 +136,22 @@ Use `max_visits: N` on any step to halt the pipeline with an error if the step i
 
 ## Status line integration
 
-If you have a `~/.claude/statusline.sh` configured as your Claude Code status line, run this skill once to add pipeline state display to it:
+If you have a status line script configured in your Claude Code settings, run this skill once to add pipeline state display to it:
 
 ```
 /pipeline:setup-statusline
 ```
 
-While a pipeline is active, your status line will show a third line:
+The skill reads your configured `statusLine.command` from settings, finds the script, and appends a pipeline state block adapted to that script's language and conventions.
+
+While a pipeline is active, your status line will show an extra line:
 
 ```
 [pipeline-name] ✅ prev-step → 🔄 current-step
 [pipeline-name] ✅ verify → 🔄 fix (×3)   ← red retry count when looping
 ```
 
-The block is inserted at the end of your existing script and is silent when no pipeline is running. Safe to run multiple times — idempotent.
-
-> **Requires:** `jq` installed, and `~/.claude/statusline.sh` must already exist and define `$CYAN`, `$GREEN`, `$YELLOW`, `$RED`, `$RESET` color variables.
+The block is silent when no pipeline is running. Safe to run multiple times — idempotent.
 
 ## Examples
 
