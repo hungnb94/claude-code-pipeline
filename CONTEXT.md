@@ -68,9 +68,9 @@ A single file at `.pipeline/state.json` containing states for all sessions, keye
 
 The session ID is provided to hooks via hook input. Each session reads and writes only its own key.
 
-### Status Line Script
+### Setup Statusline Skill
 
-A Node.js script (`hooks/statusline.js`) that Claude Code runs after each assistant message to populate the status bar at the bottom of the UI. It reads Pipeline State by session ID, derived from `workspace.project_dir` in the JSON data Claude Code pipes to stdin. Displays `Pipeline: <name> | Step: <current-step>` when a pipeline is active; silent otherwise. Auto-configured into the project's `.claude/settings.json` on the first Trigger if no `statusLine` entry already exists.
+A Claude Code skill (`/pipeline:setup-statusline`) that modifies the user's existing `~/.claude/statusline.sh` to display pipeline state. When a pipeline is active, adds a status line showing `[pipeline-name] ✅ prev-step → 🔄 current-step` with color and a retry count when a step is visited more than once. Reads Pipeline State directly from `.pipeline/state.json` using `session_id` and `workspace.project_dir` from the stdin JSON that Claude Code provides to all statusline commands. Idempotent — safe to run multiple times.
 
 ### Version
 

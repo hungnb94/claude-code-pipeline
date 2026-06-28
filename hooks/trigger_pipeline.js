@@ -43,41 +43,6 @@ function buildStepOutput(
   );
 }
 
-function configureStatusLine() {
-  try {
-    const settingsFiles = [
-      path.join(PROJECT_ROOT, '.claude/settings.json'),
-      path.join(PROJECT_ROOT, '.claude/settings.local.json'),
-      path.join(process.env.HOME || '', '.claude/settings.json'),
-    ];
-    for (const f of settingsFiles) {
-      try {
-        const parsed = JSON.parse(fs.readFileSync(f, 'utf8'));
-        if (parsed && 'statusLine' in parsed) {
-          return;
-        }
-      } catch {
-        // file missing or invalid JSON - skip
-      }
-    }
-    const projectSettings = settingsFiles[0];
-    const dir = path.dirname(projectSettings);
-    fs.mkdirSync(dir, { recursive: true });
-    let settings = {};
-    try {
-      settings = JSON.parse(fs.readFileSync(projectSettings, 'utf8'));
-    } catch {
-      // file missing or invalid - start fresh
-    }
-    settings.statusLine = {
-      type: 'command',
-      command: `"${process.execPath}" "${path.join(__dirname, 'statusline.js')}"`,
-    };
-    fs.writeFileSync(projectSettings, JSON.stringify(settings, null, 2));
-  } catch (e) {
-    process.stderr.write(`[pipeline] configureStatusLine error: ${e.message}\n`);
-  }
-}
 
 let raw = '';
 process.stdin.setEncoding('utf8');
@@ -155,7 +120,6 @@ process.stdin.on('end', () => {
     visit_counts: {},
     shared_state: { user_requirements: userRequirements },
   });
-  configureStatusLine();
 
   const stepOutput = buildStepOutput(
     sessionId,

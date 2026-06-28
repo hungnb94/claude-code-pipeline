@@ -130,10 +130,28 @@ Use `max_visits: N` on any step to halt the pipeline with an error if the step i
 - **Trigger**: typing `/pipeline:run` fires a `UserPromptSubmit` hook that reads the YAML, initializes pipeline state at `.pipeline/state.json`, and injects the first step's instructions into the conversation.
 - **Continuation**: after each Claude response, a `Stop` hook reads the current step from state and injects the next step's instructions — no user input required between steps.
 - **Progress header**: each step emits a progress line showing completed steps (✅) and the current step (🔄), e.g. `✅ plan → ✅ review → 🔄 implement`. This appears as a visible notification in the Claude Code UI (via stderr) before Claude's response, so you always know where the pipeline is.
-- **Status line**: on the first `/pipeline:run`, the plugin auto-configures a Claude Code status line in `.claude/settings.json` that shows `Pipeline: <name> | Step: <current-step>` at the bottom of the UI during execution. Skipped if a `statusLine` is already configured in any settings file.
 - **State**: pipeline state is stored per-session in `.pipeline/state.json`. Multiple concurrent sessions in the same project are isolated by session ID.
 
 > **Note:** Both hooks require the `CLAUDE_PROJECT_DIR` environment variable to be set to the project root. Claude Code sets this automatically when running hooks — if you run hooks manually for debugging, set the variable explicitly: `CLAUDE_PROJECT_DIR=$(pwd) node hooks/check_pipeline.js`.
+
+## Status line integration
+
+If you have a `~/.claude/statusline.sh` configured as your Claude Code status line, run this skill once to add pipeline state display to it:
+
+```
+/pipeline:setup-statusline
+```
+
+While a pipeline is active, your status line will show a third line:
+
+```
+[pipeline-name] ✅ prev-step → 🔄 current-step
+[pipeline-name] ✅ verify → 🔄 fix (×3)   ← red retry count when looping
+```
+
+The block is inserted at the end of your existing script and is silent when no pipeline is running. Safe to run multiple times — idempotent.
+
+> **Requires:** `jq` installed, and `~/.claude/statusline.sh` must already exist and define `$CYAN`, `$GREEN`, `$YELLOW`, `$RED`, `$RESET` color variables.
 
 ## Examples
 
