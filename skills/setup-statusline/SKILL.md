@@ -20,9 +20,11 @@ Modifies the user's configured status line script to display pipeline state (pip
    - Make it executable: `chmod +x ~/.claude/statusline.sh`
    - Add `statusLine` to `~/.claude/settings.json` (global user settings):
      ```json
-     "statusLine": {
-       "type": "command",
-       "command": "~/.claude/statusline.sh"
+     {
+        "statusLine": {
+          "type": "command",
+          "command": "~/.claude/statusline.sh"
+        }
      }
      ```
    - Tell the user what was created before continuing
