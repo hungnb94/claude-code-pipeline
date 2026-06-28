@@ -71,7 +71,7 @@ function configureStatusLine() {
     }
     settings.statusLine = {
       type: 'command',
-      command: 'node ' + path.join(__dirname, 'statusline.js'),
+      command: `"${process.execPath}" "${path.join(__dirname, 'statusline.js')}"`,
     };
     fs.writeFileSync(projectSettings, JSON.stringify(settings, null, 2));
   } catch (e) {
