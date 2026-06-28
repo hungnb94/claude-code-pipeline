@@ -136,13 +136,13 @@ Use `max_visits: N` on any step to halt the pipeline with an error if the step i
 
 ## Status line integration
 
-If you have a status line script configured in your Claude Code settings, run this skill once to add pipeline state display to it:
+Run this skill once to add pipeline state display to your status line:
 
 ```
 /pipeline:setup-statusline
 ```
 
-The skill reads your configured `statusLine.command` from settings, finds the script, and appends a pipeline state block adapted to that script's language and conventions.
+If no `statusLine` is configured, the skill creates one — a full-featured default script at `~/.claude/statusline.sh` and a `statusLine` entry in `~/.claude/settings.json`. If you already have a script, it appends a pipeline state block adapted to that script's language and conventions.
 
 While a pipeline is active, your status line will show an extra line:
 

@@ -70,7 +70,7 @@ The session ID is provided to hooks via hook input. Each session reads and write
 
 ### Setup Statusline Skill
 
-A Claude Code skill (`/pipeline:setup-statusline`) that modifies the user's configured status line script to display pipeline state. Reads `statusLine.command` from Claude Code settings files to find the target script. Adapts to the script's language and conventions. Idempotent - safe to run multiple times.
+A Claude Code skill (`/pipeline:setup-statusline`) that modifies the user's status line script to display pipeline state. Requires the exact `statusLine` key (other keys like `statusLine2` are silently ignored). If `statusLine` or its script is missing, creates both: a default script at `~/.claude/statusline.sh` and a `statusLine` entry in `~/.claude/settings.json` (global). Adapts the pipeline block to the script's language and conventions. Idempotent.
 
 ### Version
 

@@ -10,13 +10,24 @@ Modifies the user's configured status line script to display pipeline state (pip
 
 1. Find the configured status line script:
    - Check these settings files in precedence order (first match wins): `.claude/settings.local.json`, `.claude/settings.json`, `~/.claude/settings.local.json`, `~/.claude/settings.json`
-   - Find the first file that contains a `statusLine.command` value
-   - Extract the script file path from the command - it may be a plain path (`~/.claude/statusline.sh`) or a command with a runtime (`node ~/.claude/statusline.js`)
-   - If no `statusLine` is configured in any settings file, tell the user and stop
+   - Look for the exact key `statusLine` (not `statusLine2` or any other variant - only `statusLine` works in Claude Code)
+   - Extract the script file path from `statusLine.command` - it may be a plain path (`~/.claude/statusline.sh`) or a command with a runtime (`node ~/.claude/statusline.js`)
+   - If no `statusLine` key is found, proceed to step 2 to create one
+   - If `statusLine` is found but the script file does not exist, proceed to step 2 to create the script (keep the existing settings entry)
 
-2. Read the script file. If it does not exist, tell the user and stop.
+2. If `statusLine` or its script is missing, create them:
+   - Write the default script to `~/.claude/statusline.sh` (see "Default script" below)
+   - Make it executable: `chmod +x ~/.claude/statusline.sh`
+   - Add `statusLine` to `~/.claude/settings.json` (global user settings):
+     ```json
+     "statusLine": {
+       "type": "command",
+       "command": "~/.claude/statusline.sh"
+     }
+     ```
+   - Tell the user what was created before continuing
 
-3. Check if the file already contains the marker `# pipeline-status-block-start`. If it does, tell the user it's already set up and stop.
+3. Check if the script file already contains the marker `# pipeline-status-block-start`. If it does, tell the user it's already set up and stop.
 
 4. Read the script carefully to understand its conventions:
    - How it reads stdin (e.g. `input=$(cat)`, `RAW=$(cat)`, direct `jq` from process substitution)
@@ -32,6 +43,52 @@ Modifies the user's configured status line script to display pipeline state (pip
    - Be completely silent when no pipeline is active
 
 6. Confirm to the user that the block was added and what file was modified.
+
+## Default script
+
+Full-featured two-line display: model/dir/git on line 1, context bar/cost/duration/rate limits on line 2.
+
+```bash
+#!/bin/bash
+input=$(cat)
+
+MODEL=$(echo "$input" | jq -r '.model.display_name')
+DIR=$(echo "$input" | jq -r '.workspace.current_dir')
+COST=$(echo "$input" | jq -r '.cost.total_cost_usd // 0')
+PCT=$(echo "$input" | jq -r '.context_window.used_percentage // 0' | cut -d. -f1)
+DURATION_MS=$(echo "$input" | jq -r '.cost.total_duration_ms // 0')
+
+CYAN='\033[36m'; GREEN='\033[32m'; YELLOW='\033[33m'; RED='\033[31m'; RESET='\033[0m'
+
+if [ "$PCT" -ge 90 ]; then BAR_COLOR="$RED"
+elif [ "$PCT" -ge 70 ]; then BAR_COLOR="$YELLOW"
+else BAR_COLOR="$GREEN"; fi
+
+FILLED=$((PCT / 10)); EMPTY=$((10 - FILLED))
+printf -v FILL "%${FILLED}s"; printf -v PAD "%${EMPTY}s"
+BAR="${FILL// /█}${PAD// /░}"
+
+MINS=$((DURATION_MS / 60000)); SECS=$(((DURATION_MS % 60000) / 1000))
+
+BRANCH=""
+git rev-parse --git-dir > /dev/null 2>&1 && BRANCH=" | 🌿 $(git branch --show-current 2>/dev/null)"
+
+STAGED=$(git diff --cached --numstat 2>/dev/null | wc -l | tr -d ' ')
+MODIFIED=$(git diff --numstat 2>/dev/null | wc -l | tr -d ' ')
+GIT_COUNTS=""
+[ "${STAGED:-0}" -gt 0 ] && GIT_COUNTS=" ${GREEN}+${STAGED}${RESET}"
+[ "${MODIFIED:-0}" -gt 0 ] && GIT_COUNTS="${GIT_COUNTS}${YELLOW}~${MODIFIED}${RESET}"
+
+echo -e "${CYAN}[$MODEL]${RESET} 📁 ${DIR##*/}${BRANCH}${GIT_COUNTS}"
+
+COST_FMT=$(printf '$%.2f' "$COST")
+FIVE_H=$(echo "$input" | jq -r '.rate_limits.five_hour.used_percentage // empty')
+WEEK=$(echo "$input" | jq -r '.rate_limits.seven_day.used_percentage // empty')
+RATE=""
+[ -n "$FIVE_H" ] && RATE=" | 5h: $(printf '%.0f' "$FIVE_H")%"
+[ -n "$WEEK" ] && RATE="${RATE} 7d: $(printf '%.0f' "$WEEK")%"
+echo -e "${BAR_COLOR}${BAR}${RESET} ${PCT}% | ${YELLOW}${COST_FMT}${RESET} | ⏱️ ${MINS}m ${SECS}s${RATE}"
+```
 
 ## State file structure
 
@@ -52,9 +109,9 @@ Modifies the user's configured status line script to display pipeline state (pip
 - `completed_steps[-1]` - the previous step (last completed)
 - `visit_counts[current_step]` - number of prior completions of the current step; `> 0` means it's a retry
 
-## Reference implementation (bash)
+## Pipeline block reference implementation (bash)
 
-Use this as a guide when the script is a bash shell script. Adapt variable names, color vars, and stdin-reading to match what you find in the actual script.
+Guide for bash scripts. Adapt variable names, color vars, and stdin-reading to match the actual script.
 
 ```bash
 # pipeline-status-block-start
@@ -81,8 +138,14 @@ fi
 # pipeline-status-block-end
 ```
 
+## Reference
+
+Full statusLine documentation (available fields, examples, troubleshooting): https://code.claude.com/docs/en/statusline
+
 ## Notes
 
-- All internal variables should be prefixed or namespaced to avoid collisions with the host script
-- The block must be silent when no pipeline is active - no output, no errors
-- If the script's language makes it impractical to append a block (e.g. a compiled binary), tell the user and stop
+- Only the exact key `statusLine` is recognized - other keys like `statusLine2` are silently ignored
+- Always write `statusLine` to `~/.claude/settings.json` (global), not a project settings file
+- Prefix all pipeline block internal variables with `_` to avoid collisions with the host script
+- The pipeline block must produce no output when no pipeline is active
+- If appending a block is impractical (e.g. a compiled binary), tell the user and stop
