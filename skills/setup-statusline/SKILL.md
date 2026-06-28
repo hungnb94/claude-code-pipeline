@@ -29,7 +29,7 @@ if [ -n "$SESSION_ID" ] && [ -n "$PROJECT_DIR" ]; then
       _VISITS=$(jq -r --arg s "$SESSION_ID" --arg c "$_CUR" '.[$s].visit_counts[$c] // 0' "$_PIPELINE_STATE" 2>/dev/null)
       _NAME="${_PL##*/}"; _NAME="${_NAME%.yaml}"
       _RETRY=""
-      if [ "${_VISITS:-0}" -gt 1 ] 2>/dev/null; then _RETRY=" ${RED}(×${_VISITS})${RESET}"; fi
+      if [ "${_VISITS:-0}" -gt 0 ] 2>/dev/null; then _RETRY=" ${RED}(×${_VISITS})${RESET}"; fi
       _PREV_PART=""
       if [ -n "$_PREV" ]; then _PREV_PART="${GREEN}✅ ${_PREV}${RESET} → "; fi
       echo -e "${CYAN}[${_NAME}]${RESET} ${_PREV_PART}${YELLOW}🔄 ${_CUR}${RESET}${_RETRY}"

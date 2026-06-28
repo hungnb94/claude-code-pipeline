@@ -43,7 +43,6 @@ function buildStepOutput(
   );
 }
 
-
 let raw = '';
 process.stdin.setEncoding('utf8');
 process.stdin.on('data', (chunk) => {

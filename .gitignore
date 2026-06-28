@@ -6,3 +6,4 @@ package-lock.json
 .pipeline/state.json
 .claude/worktrees
 docs/plans
+.DS_Store
