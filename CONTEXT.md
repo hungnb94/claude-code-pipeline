@@ -68,6 +68,10 @@ A single file at `.pipeline/state.json` containing states for all sessions, keye
 
 The session ID is provided to hooks via hook input. Each session reads and writes only its own key.
 
+### Setup Statusline Skill
+
+A Claude Code skill (`/pipeline:setup-statusline`) that appends a pipeline state block to the user's configured status line script. Reads the `statusLine` key from Claude Code settings, adapts the block to the script's language and conventions, and is idempotent.
+
 ### Version
 
 The semantic version string (`major.minor.patch`) recorded in `package.json` and `.claude-plugin/plugin.json`. Both files must always hold the same value. The `bump_version` pipeline step is responsible for choosing and applying the correct bump level based on the nature of the changes in the current branch. If the version already differs from `origin/main`, the step skips the bump — ensuring at most one version bump per branch regardless of how many times the pipeline is run.

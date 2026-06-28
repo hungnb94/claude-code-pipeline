@@ -134,6 +134,25 @@ Use `max_visits: N` on any step to halt the pipeline with an error if the step i
 
 > **Note:** Both hooks require the `CLAUDE_PROJECT_DIR` environment variable to be set to the project root. Claude Code sets this automatically when running hooks — if you run hooks manually for debugging, set the variable explicitly: `CLAUDE_PROJECT_DIR=$(pwd) node hooks/check_pipeline.js`.
 
+## Status line integration
+
+Run this skill once to add pipeline state display to your status line:
+
+```
+/pipeline:setup-statusline
+```
+
+If no `statusLine` is configured, the skill creates one — a full-featured default script at `~/.claude/statusline.sh` and a `statusLine` entry in `~/.claude/settings.json`. If you already have a script, it appends a pipeline state block adapted to that script's language and conventions.
+
+While a pipeline is active, your status line will show an extra line:
+
+```
+[pipeline-name] ✅ prev-step → 🔄 current-step
+[pipeline-name] ✅ verify → 🔄 fix (×3)   ← red retry count when looping
+```
+
+The block is silent when no pipeline is running. Safe to run multiple times - idempotent.
+
 ## Examples
 
 See [`examples/pipeline.yaml`](examples/pipeline.yaml) for a full plan → execute → verify → review pipeline.
@@ -143,3 +162,13 @@ See [`examples/pipeline.yaml`](examples/pipeline.yaml) for a full plan → execu
 ```
 /plugin uninstall pipeline@claude-code-pipeline
 ```
+
+## Development
+
+To test local changes to this plugin without publishing, load it directly from the repo root:
+
+```
+claude --plugin-dir .
+```
+
+This loads the plugin from your working directory. Any changes to hook scripts or skill files take effect on the next Claude Code session.

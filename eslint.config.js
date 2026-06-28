@@ -2,6 +2,7 @@ const js = require('@eslint/js');
 const prettierConfig = require('eslint-config-prettier');
 
 module.exports = [
+  { ignores: ['.claude/worktrees/**'] },
   js.configs.recommended,
   prettierConfig,
   {
