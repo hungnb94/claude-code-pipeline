@@ -1,0 +1,49 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check if tag exists
+        id: version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "current=$VERSION" >> $GITHUB_OUTPUT
+          if git ls-remote --tags origin "v$VERSION" | grep -q "v$VERSION"; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup Node
+        if: steps.version.outputs.changed == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        if: steps.version.outputs.changed == 'true'
+        run: npm ci
+
+      - name: Run tests
+        if: steps.version.outputs.changed == 'true'
+        run: npm test
+
+      - name: Create release
+        if: steps.version.outputs.changed == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=${{ steps.version.outputs.current }}
+          gh release create "v$VERSION" \
+            --title "v$VERSION" \
+            --generate-notes
