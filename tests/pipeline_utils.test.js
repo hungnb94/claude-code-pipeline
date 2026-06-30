@@ -178,13 +178,13 @@ describe('default pipeline routing', () => {
     expect(pipeline.steps.fix_code.next).toBe('verify');
   });
 
-  it('lint routes to validate_plugin on success', () => {
+  it('lint routes to jscpd_check on success', () => {
     const yaml = fs.readFileSync(
       path.resolve(__dirname, '../.pipeline/pipeline.yaml'),
       'utf8'
     );
     const pipeline = parseYAML(yaml);
-    expect(pipeline.steps.lint.next).toBe('validate_plugin');
+    expect(pipeline.steps.lint.next).toBe('jscpd_check');
     expect(pipeline.steps.lint.next_fail).toBe('fix_lint');
   });
 

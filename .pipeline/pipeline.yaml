@@ -44,7 +44,7 @@ steps:
     type: shell
     commands:
       - npm run lint
-    next: validate_plugin
+    next: jscpd_check
     next_fail: fix_lint
     max_visits: 9
 
@@ -53,6 +53,21 @@ steps:
     prompt: |
       Run `npm run lint` to see current lint errors. Fix all violations. Only touch files with errors. Do not change logic. After fixing, run `npm run format` to apply Prettier formatting.
     next: verify
+    max_visits: 9
+
+  jscpd_check:
+    type: shell
+    commands:
+      - npx jscpd --min-lines 5 --min-tokens 50 --threshold 0 --ignore "node_modules/**,.pipeline/**,.claude/**" .
+    next: validate_plugin
+    next_fail: fix_duplicates
+    max_visits: 9
+
+  fix_duplicates:
+    type: agent
+    prompt: |
+      Run `npx jscpd --min-lines 5 --min-tokens 50 --ignore "node_modules/**,.pipeline/**,.claude/**" .` to identify duplicate code. Refactor to eliminate all duplicates. Only touch files with duplications.
+    next: jscpd_check
     max_visits: 9
 
   validate_plugin:
