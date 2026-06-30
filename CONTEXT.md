@@ -8,10 +8,11 @@ A YAML file defining a sequence of steps to be executed automatically by Claude.
 
 ### Step
 
-A single unit of work in a pipeline. Two types:
+A single unit of work in a pipeline. Three types:
 
 - **agent step** — Claude executes a prompt and produces output
 - **shell step** — one or more shell commands run via Bash; pass/fail determined by exit code
+- **interview step** — Claude gathers requirements from the user across multiple turns; the Stop hook exits silently while this step is active, allowing natural conversation until Claude locks the requirements
 
 ### Pipeline State
 
@@ -71,6 +72,14 @@ The session ID is provided to hooks via hook input. Each session reads and write
 ### Setup Statusline Skill
 
 A Claude Code skill (`/pipeline:setup-statusline`) that appends a pipeline state block to the user's configured status line script. Reads the `statusLine` key from Claude Code settings, adapts the block to the script's language and conventions, and is idempotent.
+
+### Interview Step
+
+A step with `type: interview` used to gather requirements through multi-turn conversation. The Stop hook exits silently (exit 0) whenever the current step is an interview step, allowing the conversation to continue naturally without re-injecting a prompt. Must be the pipeline's entry step — a validation error is raised if an interview step appears anywhere else. `max_visits` has no effect during conversation. When Claude has gathered sufficient requirements, it runs a Python snippet to set `shared_state['requirements_locked'] = 'true'`, overwrite `shared_state['user_requirements']` with the gathered text, and advance `current_step` to the next step.
+
+### Requirements Lock
+
+The action of finalizing requirements in an interview step. Claude runs a Python snippet (provided in the step output) that sets `shared_state['requirements_locked'] = 'true'` and `shared_state['user_requirements']` to the complete gathered text. Subsequent steps reference requirements via `{{user_requirements}}`. The `guard_requirements.js` PreToolUse hook blocks `Edit`, `Write`, and `MultiEdit` tool calls until the lock is set, preventing Claude from coding before requirements are confirmed.
 
 ### Version
 

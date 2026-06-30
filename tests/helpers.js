@@ -1,5 +1,7 @@
 const fs = require('fs');
 const path = require('path');
+const { spawnSync } = require('child_process');
+const { randomUUID } = require('crypto');
 
 const PROJECT_ROOT = path.resolve(__dirname, '..');
 const STATE_PATH = path.join(PROJECT_ROOT, '.pipeline/state.json');
@@ -62,4 +64,6 @@ module.exports = {
   setSessionState,
   cleanupSession,
   createSessionState,
+  spawnSync,
+  randomUUID,
 };

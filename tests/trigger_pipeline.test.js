@@ -202,4 +202,28 @@ describe('trigger_pipeline.js', () => {
       'Implement the following: Add authentication to the app'
     );
   });
+
+  // ── Test 12: interview step not entry ────────────────────────────────────
+  it('exits 1 when interview step is not the entry step', () => {
+    const result = runHook(
+      '/pipeline:run tests/fixtures/interview-non-entry.yaml',
+      SESSION_ID
+    );
+
+    expect(result.status).toBe(1);
+    expect(result.stdout).toContain('gather_requirements');
+    expect(result.stdout).toContain('must be the entry step');
+  });
+
+  // ── Test 13: interview step is entry ────────────────────────────────────
+  it('exits 0 and outputs interview step when entry is type=interview', () => {
+    const result = runHook(
+      '/pipeline:run tests/fixtures/interview-entry.yaml',
+      SESSION_ID
+    );
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('(type=interview)');
+    expect(result.stdout).not.toContain('Execute the following prompt');
+  });
 });

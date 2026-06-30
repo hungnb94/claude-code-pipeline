@@ -9,6 +9,8 @@ const {
   buildAgentUpdateBlock,
   buildShellUpdateBlock,
   buildProgressHeader,
+  buildInterviewUpdateBlock,
+  buildStepOutput,
 } = require('../hooks/pipeline_utils.js');
 
 describe('parseYAML', () => {
@@ -240,5 +242,28 @@ describe('buildProgressHeader', () => {
 
   it('treats missing completedSteps as empty', () => {
     expect(buildProgressHeader(undefined, 'plan')).toBe('🔄 plan');
+  });
+});
+
+describe('buildInterviewUpdateBlock', () => {
+  it('sets requirements_locked', () => {
+    const result = buildInterviewUpdateBlock('sess1', 'gather', 'plan');
+    expect(result).toContain('requirements_locked');
+    expect(result).toContain("'true'");
+    expect(result).toContain('REPLACE_WITH_GATHERED_REQUIREMENTS');
+  });
+});
+
+describe('buildStepOutput', () => {
+  it('dispatches type=interview without Execute the following prompt framing', () => {
+    const result = buildStepOutput(
+      'sess1',
+      'gather',
+      { type: 'interview', prompt: 'Hello', next: 'plan' },
+      {},
+      []
+    );
+    expect(result).toContain('(type=interview)');
+    expect(result).not.toContain('Execute the following prompt');
   });
 });

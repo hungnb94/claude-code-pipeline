@@ -1,13 +1,5 @@
-const { spawnSync } = require('child_process');
-const { randomUUID } = require('crypto');
 const path = require('path');
-
-const {
-  PROJECT_ROOT,
-  setSessionState,
-  cleanupSession,
-  createSessionState,
-} = require('./helpers');
+const { PROJECT_ROOT, setSessionState, cleanupSession, createSessionState, spawnSync, randomUUID } = require('./helpers');
 
 const HOOK = path.join(PROJECT_ROOT, 'hooks/check_pipeline.js');
 
@@ -142,5 +134,28 @@ describe('check_pipeline.js', () => {
     const result = runHook(SESSION_ID);
     expect(result.status).toBe(0);
     expect(result.stdout).toBe('');
+  });
+
+  it('exits 0 silently when current step is type=interview', () => {
+    setSessionState(SESSION_ID, createSessionState({
+      pipeline: 'tests/fixtures/interview-entry.yaml',
+      current_step: 'gather_requirements',
+    }));
+    const result = runHook(SESSION_ID);
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe('');
+    expect(result.stderr).toBe('');
+  });
+
+  it('exits 2 and injects next step after requirements are locked', () => {
+    setSessionState(SESSION_ID, createSessionState({
+      pipeline: 'tests/fixtures/interview-entry.yaml',
+      current_step: 'plan',
+      completed_steps: ['gather_requirements'],
+      shared_state: { requirements_locked: 'true', user_requirements: 'Build a todo app' },
+    }));
+    const result = runHook(SESSION_ID);
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('(type=agent)');
   });
 });

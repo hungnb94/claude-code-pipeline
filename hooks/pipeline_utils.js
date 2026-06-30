@@ -186,6 +186,32 @@ function buildAgentUpdateBlock(sessionId, stepName, next) {
   );
 }
 
+function buildInterviewUpdateBlock(sessionId, stepName, next) {
+  const sid = escapeForPython(sessionId);
+  const sname = escapeForPython(stepName);
+  const advance = next
+    ? `sess['current_step'] = '${escapeForPython(next)}'`
+    : `sess['mode'] = 'free'`;
+  const py = [
+    `import json; from pathlib import Path`,
+    `p = Path('${escapeForPython(STATE_PATH)}')`,
+    `s = json.loads(p.read_text())`,
+    `sess = s['${sid}']`,
+    `sess['completed_steps'].append('${sname}')`,
+    `sess.setdefault('visit_counts', {})`,
+    `sess['visit_counts']['${sname}'] = sess['visit_counts'].get('${sname}', 0) + 1`,
+    `sess['shared_state']['user_requirements'] = 'REPLACE_WITH_GATHERED_REQUIREMENTS'`,
+    `sess['shared_state']['requirements_locked'] = 'true'`,
+    advance,
+    `p.write_text(json.dumps(s, indent=2))`,
+  ].join('\n');
+  return (
+    `When you have gathered all requirements, run the following to lock them and continue:\n\n` +
+    `\`\`\`bash\npython3 -c "\n${py}\n"\n\`\`\`\n\n` +
+    `Replace REPLACE_WITH_GATHERED_REQUIREMENTS with the complete requirements text you gathered.`
+  );
+}
+
 function buildShellUpdateBlock(sessionId, stepName, next, nextFail) {
   const sid = escapeForPython(sessionId);
   const sname = escapeForPython(stepName);
@@ -254,6 +280,15 @@ async function parseStdinJSON() {
 
 function buildStepOutput(sessionId, stepName, step, sharedState, completedSteps) {
   const header = buildProgressHeader(completedSteps || [], stepName);
+  if (step.type === 'interview') {
+    const prompt = render(step.prompt || '', sharedState);
+    return (
+      `${header}\n\n` +
+      `Pipeline step: '${stepName}' (type=interview)\n\n` +
+      `${prompt.trim()}\n\n` +
+      buildInterviewUpdateBlock(sessionId, stepName, step.next || '')
+    );
+  }
   if (step.type === 'shell') {
     const cmds = (step.commands || []).map((c) => `  ${c}`).join('\n');
     return (
@@ -277,6 +312,28 @@ function buildStepOutput(sessionId, stepName, step, sharedState, completedSteps)
   );
 }
 
+function loadActivePipelineContext(data) {
+  const sessionId = data.session_id || '';
+  if (!sessionId) {
+    return null;
+  }
+  const state = getSessionState(sessionId);
+  if (!state || state.mode !== 'pipeline') {
+    return null;
+  }
+  const pipelinePath = path.join(PROJECT_ROOT, state.pipeline || '.pipeline/pipeline.yaml');
+  if (!fs.existsSync(pipelinePath)) {
+    return null;
+  }
+  let config;
+  try {
+    config = parseYAML(fs.readFileSync(pipelinePath, 'utf8'));
+  } catch {
+    return null;
+  }
+  return { sessionId, state, config };
+}
+
 module.exports = {
   parseYAML,
   render,
@@ -284,7 +341,9 @@ module.exports = {
   writeAllStates,
   getSessionState,
   setSessionState,
+  loadActivePipelineContext,
   buildAgentUpdateBlock,
+  buildInterviewUpdateBlock,
   buildShellUpdateBlock,
   buildProgressHeader,
   buildStepOutput,

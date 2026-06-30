@@ -62,6 +62,17 @@ const {
     process.exit(1);
   }
 
+  const interviewNonEntry = Object.entries(config.steps).filter(
+    ([name, s]) => s.type === 'interview' && name !== config.entry
+  );
+  if (interviewNonEntry.length > 0) {
+    const names = interviewNonEntry.map(([n]) => n).join(', ');
+    process.stdout.write(
+      `Invalid pipeline: interview step(s) '${names}' must be the entry step.\n`
+    );
+    process.exit(1);
+  }
+
   if (entryStep.terminal) {
     process.stdout.write(
       `Pipeline initialized from '${pipelineFile}' but entry step '${config.entry}' is terminal — pipeline complete.\n`
