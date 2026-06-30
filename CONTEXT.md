@@ -12,7 +12,7 @@ A single unit of work in a pipeline. Three types:
 
 - **agent step** — Claude executes a prompt and produces output
 - **shell step** — one or more shell commands run via Bash; pass/fail determined by exit code
-- **interview step** — Claude gathers requirements from the user across multiple turns; the Stop hook exits silently while this step is active, allowing natural conversation until Claude locks the requirements
+- **interview step** — Claude gathers requirements from the user across multiple turns before the pipeline proceeds
 
 ### Pipeline State
 
@@ -75,11 +75,11 @@ A Claude Code skill (`/pipeline:setup-statusline`) that appends a pipeline state
 
 ### Interview Step
 
-A step with `type: interview` used to gather requirements through multi-turn conversation. Must be the pipeline's entry step — a validation error is raised if an interview step appears anywhere else.
+A step with `type: interview` used to gather requirements through multi-turn conversation before the pipeline proceeds.
 
 ### Requirements Lock
 
-The action of finalizing gathered requirements in an interview step, making them available to subsequent steps via `{{user_requirements}}`. Until locked, file-editing tools are blocked to prevent coding before requirements are confirmed.
+The action of finalizing gathered requirements in an interview step, making them available to subsequent steps via `{{user_requirements}}`.
 
 ### Version
 
