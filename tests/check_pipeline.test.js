@@ -46,7 +46,7 @@ describe('check_pipeline.js', () => {
       "Pipeline step: 'plan' (type=agent)"
     );
     expect(result.stderr).toContain(
-      'Writing a step-by-step implementation plan.'
+      'Write a step-by-step implementation plan for the following requirements:'
     );
   });
 
@@ -119,7 +119,7 @@ describe('check_pipeline.js', () => {
     setSessionState(SESSION_ID, createSessionState());
     const result = runHook(SESSION_ID);
     expect(result.stderr).toContain('Execute the following prompt:');
-    expect(result.stderr).toContain('Writing a step-by-step implementation plan.');
+    expect(result.stderr).toContain('Write a step-by-step implementation plan for the following requirements:');
   });
 
   it('writes full shell step output to stderr', () => {

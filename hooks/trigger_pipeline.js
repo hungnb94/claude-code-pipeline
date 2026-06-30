@@ -73,6 +73,13 @@ const {
     process.exit(1);
   }
 
+  if (entryStep.type === 'interview' && !entryStep.next) {
+    process.stdout.write(
+      `Invalid pipeline: interview step '${config.entry}' must have a 'next' step.\n`
+    );
+    process.exit(1);
+  }
+
   if (entryStep.terminal) {
     process.stdout.write(
       `Pipeline initialized from '${pipelineFile}' but entry step '${config.entry}' is terminal — pipeline complete.\n`

@@ -30,7 +30,7 @@ describe('guard_requirements.js', () => {
   });
 
   it('exits 0 when entry step is not type=interview', () => {
-    setSessionState(SESSION_ID, createSessionState());
+    setSessionState(SESSION_ID, createSessionState({ pipeline: 'examples/pipeline.yaml' }));
     const result = runGuard(SESSION_ID, 'Edit');
     expect(result.status).toBe(0);
     expect(result.stdout).toBe('');
@@ -57,6 +57,7 @@ describe('guard_requirements.js', () => {
     expect(result.status).toBe(0);
     const out = JSON.parse(result.stdout);
     expect(out.decision).toBe('block');
+    expect(result.stderr).toContain('blocked');
   });
 
   it('blocks Write when requirements are not locked', () => {

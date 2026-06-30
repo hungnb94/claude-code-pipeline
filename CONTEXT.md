@@ -75,11 +75,11 @@ A Claude Code skill (`/pipeline:setup-statusline`) that appends a pipeline state
 
 ### Interview Step
 
-A step with `type: interview` used to gather requirements through multi-turn conversation. The Stop hook exits silently (exit 0) whenever the current step is an interview step, allowing the conversation to continue naturally without re-injecting a prompt. Must be the pipeline's entry step — a validation error is raised if an interview step appears anywhere else. `max_visits` has no effect during conversation. When Claude has gathered sufficient requirements, it runs a Python snippet to set `shared_state['requirements_locked'] = 'true'`, overwrite `shared_state['user_requirements']` with the gathered text, and advance `current_step` to the next step.
+A step with `type: interview` used to gather requirements through multi-turn conversation. Must be the pipeline's entry step — a validation error is raised if an interview step appears anywhere else.
 
 ### Requirements Lock
 
-The action of finalizing requirements in an interview step. Claude runs a Python snippet (provided in the step output) that sets `shared_state['requirements_locked'] = 'true'` and `shared_state['user_requirements']` to the complete gathered text. Subsequent steps reference requirements via `{{user_requirements}}`. The `guard_requirements.js` PreToolUse hook blocks `Edit`, `Write`, and `MultiEdit` tool calls until the lock is set, preventing Claude from coding before requirements are confirmed.
+The action of finalizing gathered requirements in an interview step, making them available to subsequent steps via `{{user_requirements}}`. Until locked, file-editing tools are blocked to prevent coding before requirements are confirmed.
 
 ### Version
 

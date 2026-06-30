@@ -1,0 +1,6 @@
+entry: gather_requirements
+steps:
+  gather_requirements:
+    type: interview
+    prompt: |
+      Gather requirements from the user.

@@ -117,15 +117,15 @@ describe('trigger_pipeline.js', () => {
     expect(result.stdout).toContain(
       "Pipeline initialized from '.pipeline/pipeline.yaml'"
     );
-    expect(result.stdout).toContain("Pipeline step: 'plan'");
-    expect(result.stdout).toContain('🔄 plan');
-    expect(result.stderr).toContain('🔄 plan');
+    expect(result.stdout).toContain("Pipeline step: 'gather_requirements'");
+    expect(result.stdout).toContain('🔄 gather_requirements');
+    expect(result.stderr).toContain('🔄 gather_requirements');
 
     const state = readSessionState(SESSION_ID);
     expect(state).not.toBeNull();
     expect(state.mode).toBe('pipeline');
     expect(state.pipeline).toBe('.pipeline/pipeline.yaml');
-    expect(state.current_step).toBe('plan');
+    expect(state.current_step).toBe('gather_requirements');
     expect(state.completed_steps).toEqual([]);
     expect(state.shared_state).toEqual({ user_requirements: '' });
     expect(state.visit_counts).toEqual({});
@@ -225,5 +225,16 @@ describe('trigger_pipeline.js', () => {
     expect(result.status).toBe(0);
     expect(result.stdout).toContain('(type=interview)');
     expect(result.stdout).not.toContain('Execute the following prompt');
+  });
+
+  // ── Test 14: interview step missing next ─────────────────────────────────
+  it('exits 1 when interview entry step has no next', () => {
+    const result = runHook(
+      '/pipeline:run tests/fixtures/interview-no-next.yaml',
+      SESSION_ID
+    );
+
+    expect(result.status).toBe(1);
+    expect(result.stdout).toContain("must have a 'next' step");
   });
 });
