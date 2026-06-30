@@ -117,7 +117,7 @@ describe('trigger_pipeline.js', () => {
     expect(result.stdout).toContain(
       "Pipeline initialized from '.pipeline/pipeline.yaml'"
     );
-    expect(result.stdout).toContain("Pipeline active — current step: 'plan'");
+    expect(result.stdout).toContain("Pipeline step: 'plan'");
     expect(result.stdout).toContain('🔄 plan');
     expect(result.stderr).toContain('🔄 plan');
 
@@ -139,7 +139,7 @@ describe('trigger_pipeline.js', () => {
     expect(result.stdout).toContain(
       "Pipeline initialized from 'examples/pipeline.yaml'"
     );
-    expect(result.stdout).toContain("Pipeline active — current step: 'clarify'");
+    expect(result.stdout).toContain("Pipeline step: 'clarify'");
     expect(result.stdout).toContain('🔄 clarify');
     expect(result.stderr).toContain('🔄 clarify');
 

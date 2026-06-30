@@ -6,6 +6,8 @@ process.env.CLAUDE_PROJECT_DIR = path.resolve(__dirname, '..');
 const {
   parseYAML,
   render,
+  buildAgentUpdateBlock,
+  buildShellUpdateBlock,
   buildProgressHeader,
 } = require('../hooks/pipeline_utils.js');
 
@@ -105,6 +107,45 @@ describe('render', () => {
   });
 });
 
+describe('buildAgentUpdateBlock', () => {
+  it('includes the session ID in the python3 command', () => {
+    const block = buildAgentUpdateBlock('my-session-id', 'plan', 'review_plan');
+    expect(block).toContain('my-session-id');
+    expect(block).toContain('python3');
+  });
+
+  it('sets current_step to next when next is provided', () => {
+    const block = buildAgentUpdateBlock('sid', 'plan', 'review_plan');
+    expect(block).toContain('current_step');
+    expect(block).toContain('review_plan');
+  });
+
+  it("sets mode to 'free' when next is empty (terminal step)", () => {
+    const block = buildAgentUpdateBlock('sid', 'done', '');
+    expect(block).toContain('mode');
+    expect(block).toContain('free');
+  });
+
+  it('escapes single quotes in session ID', () => {
+    const block = buildAgentUpdateBlock("it's-a-session", 'plan', 'next');
+    expect(block).toContain("\\'s-a-session");
+  });
+});
+
+describe('buildShellUpdateBlock', () => {
+  it('includes success and failure python3 blocks', () => {
+    const block = buildShellUpdateBlock('sid', 'verify', 'review', 'fix_code');
+    expect(block).toContain('If ALL commands exit 0');
+    expect(block).toContain('If ANY command fails');
+    expect(block).toContain('review');
+    expect(block).toContain('fix_code');
+  });
+
+  it("sets mode='free' on success when next is empty", () => {
+    const block = buildShellUpdateBlock('sid', 'verify', '', 'fix_code');
+    expect(block).toContain('free');
+  });
+});
 
 describe('default pipeline routing', () => {
   const fs = require('fs');

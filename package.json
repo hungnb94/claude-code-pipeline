@@ -2,7 +2,7 @@
   "name": "claude-code-pipeline",
   "version": "1.3.3",
   "scripts": {
-    "test": "jest --runInBand",
+    "test": "jest",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",

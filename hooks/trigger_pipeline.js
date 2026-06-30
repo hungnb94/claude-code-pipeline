@@ -79,6 +79,7 @@ const {
   });
 
   const stepOutput = buildStepOutput(
+    sessionId,
     config.entry,
     entryStep,
     { user_requirements: userRequirements },

@@ -157,6 +157,70 @@ function setSessionState(sessionId, sessionState) {
   writeAllStates(all);
 }
 
+function escapeForPython(s) {
+  return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+function buildAgentUpdateBlock(sessionId, stepName, next) {
+  const sid = escapeForPython(sessionId);
+  const sname = escapeForPython(stepName);
+  const nextSafe = next ? escapeForPython(next) : '';
+  const advance = next
+    ? `sess['current_step'] = '${nextSafe}'`
+    : `sess['mode'] = 'free'`;
+  const py = [
+    `import json; from pathlib import Path`,
+    `p = Path('${escapeForPython(STATE_PATH)}')`,
+    `s = json.loads(p.read_text())`,
+    `sess = s['${sid}']`,
+    `sess['completed_steps'].append('${sname}')`,
+    `sess.setdefault('visit_counts', {})`,
+    `sess['visit_counts']['${sname}'] = sess['visit_counts'].get('${sname}', 0) + 1`,
+    `sess['shared_state']['${sname}_output'] = 'REPLACE_WITH_ONE_LINE_SUMMARY'`,
+    advance,
+    `p.write_text(json.dumps(s, indent=2))`,
+  ].join('\n');
+  return (
+    `After completing your response, advance the pipeline by running:\n\n` +
+    `\`\`\`bash\npython3 -c "\n${py}\n"\n\`\`\``
+  );
+}
+
+function buildShellUpdateBlock(sessionId, stepName, next, nextFail) {
+  const sid = escapeForPython(sessionId);
+  const sname = escapeForPython(stepName);
+  const nextSafe = next ? escapeForPython(next) : '';
+  const nextFailSafe = nextFail ? escapeForPython(nextFail) : '';
+  const baseLines = [
+    `import json; from pathlib import Path`,
+    `p = Path('${escapeForPython(STATE_PATH)}')`,
+    `s = json.loads(p.read_text())`,
+    `sess = s['${sid}']`,
+    `sess['completed_steps'].append('${sname}')`,
+    `sess.setdefault('visit_counts', {})`,
+    `sess['visit_counts']['${sname}'] = sess['visit_counts'].get('${sname}', 0) + 1`,
+  ];
+  const successLine = next
+    ? `sess['current_step'] = '${nextSafe}'`
+    : `sess['mode'] = 'free'`;
+  const failLine = nextFail
+    ? `sess['current_step'] = '${nextFailSafe}'`
+    : `sess['mode'] = 'free'`;
+  const pySuccess = [
+    ...baseLines,
+    successLine,
+    `p.write_text(json.dumps(s, indent=2))`,
+  ].join('\n');
+  const pyFail = [
+    ...baseLines,
+    failLine,
+    `p.write_text(json.dumps(s, indent=2))`,
+  ].join('\n');
+  return (
+    `If ALL commands exit 0, run:\n\`\`\`bash\npython3 -c "\n${pySuccess}\n"\n\`\`\`\n\n` +
+    `If ANY command fails, run:\n\`\`\`bash\npython3 -c "\n${pyFail}\n"\n\`\`\``
+  );
+}
 
 function buildProgressHeader(completedSteps, currentStep) {
   const parts = [
@@ -188,21 +252,28 @@ async function parseStdinJSON() {
   }
 }
 
-function buildStepOutput(stepName, step, sharedState, completedSteps) {
+function buildStepOutput(sessionId, stepName, step, sharedState, completedSteps) {
   const header = buildProgressHeader(completedSteps || [], stepName);
   if (step.type === 'shell') {
     const cmds = (step.commands || []).map((c) => `  ${c}`).join('\n');
     return (
       `${header}\n\n` +
       `Pipeline step: '${stepName}' (type=shell)\n\n` +
-      `Run these commands in sequence:\n${cmds}`
+      `Run these commands in sequence:\n${cmds}\n\n` +
+      buildShellUpdateBlock(
+        sessionId,
+        stepName,
+        step.next || '',
+        step.next_fail || ''
+      )
     );
   }
   const prompt = render(step.prompt || '', sharedState);
   return (
     `${header}\n\n` +
-    `Pipeline active — current step: '${stepName}' (type=agent).\n\n` +
-    `Execute the following prompt:\n---\n${prompt.trim()}\n---`
+    `Pipeline step: '${stepName}' (type=agent)\n\n` +
+    `Execute the following prompt:\n---\n${prompt.trim()}\n---\n\n` +
+    buildAgentUpdateBlock(sessionId, stepName, step.next || '')
   );
 }
 
@@ -213,6 +284,8 @@ module.exports = {
   writeAllStates,
   getSessionState,
   setSessionState,
+  buildAgentUpdateBlock,
+  buildShellUpdateBlock,
   buildProgressHeader,
   buildStepOutput,
   readStdin,

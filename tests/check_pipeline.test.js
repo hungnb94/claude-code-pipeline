@@ -44,22 +44,42 @@ describe('check_pipeline.js', () => {
     expect(result.stdout).toBe('');
   });
 
-  it('exits 2 and injects next agent step prompt when pipeline is active', () => {
-    // current_step='plan' (agent). Hook marks plan done, advances to review_plan, injects review_plan prompt.
+  it('exits 2 and injects agent step prompt when pipeline is active', () => {
     setSessionState(SESSION_ID, createSessionState());
     const result = runHook(SESSION_ID);
     expect(result.status).toBe(2);
     expect(result.stdout).toBe('');
-    expect(result.stderr).toContain('✅ plan → 🔄 review_plan');
-    expect(result.stderr).toContain('review_plan');
-    expect(result.stderr).toContain('Pipeline active');
+    expect(result.stderr).toContain('🔄 plan');
+    expect(result.stderr).toContain(
+      "Pipeline step: 'plan' (type=agent)"
+    );
+    expect(result.stderr).toContain(
+      'Writing a step-by-step implementation plan.'
+    );
+  });
+
+  it('exits 2 and shows shell commands when current step is type=shell', () => {
+    setSessionState(SESSION_ID, createSessionState({
+      current_step: 'verify',
+      completed_steps: ['plan', 'review_plan', 'implementation', 'docs'],
+      visit_counts: { plan: 1, review_plan: 1, implementation: 1, docs: 1 },
+    }));
+    const result = runHook(SESSION_ID);
+    expect(result.status).toBe(2);
+    expect(result.stdout).toBe('');
+    expect(result.stderr).toContain(
+      '✅ plan → ✅ review_plan → ✅ implementation → ✅ docs → 🔄 verify'
+    );
+    expect(result.stderr).toContain(
+      "Pipeline step: 'verify' (type=shell)"
+    );
+    expect(result.stderr).toContain('npm test');
   });
 
   it('exits 2 with error when step visit count reaches max_visits', () => {
-    // fix_lint is an agent step with max_visits=9
     setSessionState(SESSION_ID, createSessionState({
-      current_step: 'fix_lint',
-      visit_counts: { fix_lint: 9 },
+      current_step: 'verify',
+      visit_counts: { verify: 9 },
     }));
     const result = runHook(SESSION_ID);
     expect(result.status).toBe(2);
@@ -82,15 +102,13 @@ describe('check_pipeline.js', () => {
     beforeEach(() => {
       setSessionState(SESSION_ID, createSessionState({
         pipeline: 'examples/pipeline.yaml',
-        current_step: 'clarify',
-        completed_steps: [],
-        visit_counts: {},
+        completed_steps: ['clarify'],
+        visit_counts: { clarify: 1 },
         shared_state: { clarify_output: 'use postgres for storage' },
       }));
     });
 
-    it('interpolates {{step_output}} placeholders in next agent prompt', () => {
-      // clarify (agent) -> plan (agent, uses {{clarify_output}})
+    it('interpolates {{step_output}} placeholders in agent prompt', () => {
       const result = runHook(SESSION_ID);
       expect(result.status).toBe(2);
       expect(result.stdout).toBe('');
@@ -109,6 +127,14 @@ describe('check_pipeline.js', () => {
     setSessionState(SESSION_ID, createSessionState());
     const result = runHook(SESSION_ID);
     expect(result.stderr).toContain('Execute the following prompt:');
+    expect(result.stderr).toContain('Writing a step-by-step implementation plan.');
+  });
+
+  it('writes full shell step output to stderr', () => {
+    setSessionState(SESSION_ID, createSessionState({ current_step: 'verify' }));
+    const result = runHook(SESSION_ID);
+    expect(result.stderr).toContain('Run these commands in sequence:');
+    expect(result.stderr).toContain('npm test');
   });
 
   it('exits 0 silently when pipeline file does not exist', () => {
@@ -116,54 +142,5 @@ describe('check_pipeline.js', () => {
     const result = runHook(SESSION_ID);
     expect(result.status).toBe(0);
     expect(result.stdout).toBe('');
-  });
-
-  describe('shell step chaining', () => {
-    it('executes shell step and injects next agent step when shell succeeds', () => {
-      // start (agent) -> check (shell, `true`) -> finish (agent)
-      setSessionState(SESSION_ID, createSessionState({
-        pipeline: 'tests/fixtures/shell-chain.yaml',
-        current_step: 'start',
-        completed_steps: [],
-        visit_counts: {},
-        shared_state: {},
-      }));
-      const result = runHook(SESSION_ID);
-      expect(result.status).toBe(2);
-      expect(result.stdout).toBe('');
-      expect(result.stderr).toContain('✅ start → ✅ check → 🔄 finish');
-      expect(result.stderr).toContain('Finished successfully');
-    });
-
-    it('executes shell step and injects fail_step agent prompt when shell fails', () => {
-      // start (agent) -> check (shell, `false`) -> fail_step (agent)
-      setSessionState(SESSION_ID, createSessionState({
-        pipeline: 'tests/fixtures/shell-chain-fail.yaml',
-        current_step: 'start',
-        completed_steps: [],
-        visit_counts: {},
-        shared_state: {},
-      }));
-      const result = runHook(SESSION_ID);
-      expect(result.status).toBe(2);
-      expect(result.stdout).toBe('');
-      expect(result.stderr).toContain('✅ start → ✅ check → 🔄 fail_step');
-      expect(result.stderr).toContain('Shell step failed');
-    });
-
-    it('exits 2 with error when shell step reaches max_visits', () => {
-      // verify has max_visits=9; if visit_counts.verify=9 when chaining through it, halt
-      setSessionState(SESSION_ID, createSessionState({
-        current_step: 'docs',
-        completed_steps: ['plan', 'review_plan', 'implementation'],
-        visit_counts: { plan: 1, review_plan: 1, implementation: 1, verify: 9 },
-        shared_state: {},
-      }));
-      const result = runHook(SESSION_ID);
-      // docs (agent) -> verify (shell, max_visits=9, visits=9) -> halt
-      expect(result.status).toBe(2);
-      expect(result.stderr).toContain('Pipeline error');
-      expect(result.stderr).toContain('max_visits');
-    });
   });
 });
