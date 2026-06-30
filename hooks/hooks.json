@@ -1,6 +1,18 @@
 {
   "description": "Pipeline plugin hooks — UserPromptSubmit initializes pipeline on /pipeline:run, Stop drives step continuation.",
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/guard_state.sh"]
+          }
+        ]
+      }
+    ],
     "UserPromptSubmit": [
       {
         "hooks": [
