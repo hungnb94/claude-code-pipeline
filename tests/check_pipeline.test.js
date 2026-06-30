@@ -1,11 +1,15 @@
 const { spawnSync } = require('child_process');
 const { randomUUID } = require('crypto');
-const fs = require('fs');
 const path = require('path');
 
-const PROJECT_ROOT = path.resolve(__dirname, '..');
+const {
+  PROJECT_ROOT,
+  setSessionState,
+  cleanupSession,
+  createSessionState,
+} = require('./helpers');
+
 const HOOK = path.join(PROJECT_ROOT, 'hooks/check_pipeline.js');
-const STATE_PATH = path.join(PROJECT_ROOT, '.pipeline/state.json');
 
 function runHook(sessionId) {
   const input = JSON.stringify({ session_id: sessionId });
@@ -15,33 +19,6 @@ function runHook(sessionId) {
     cwd: PROJECT_ROOT,
     env: { ...process.env, CLAUDE_PROJECT_DIR: PROJECT_ROOT },
   });
-}
-
-function setSessionState(sessionId, state) {
-  let all = {};
-  if (fs.existsSync(STATE_PATH)) {
-    try {
-      all = JSON.parse(fs.readFileSync(STATE_PATH, 'utf8'));
-    } catch {
-      // ignore parse errors on corrupt state file
-    }
-  }
-  all[sessionId] = state;
-  fs.mkdirSync(path.dirname(STATE_PATH), { recursive: true });
-  fs.writeFileSync(STATE_PATH, JSON.stringify(all, null, 2));
-}
-
-function cleanupSession(sessionId) {
-  if (!fs.existsSync(STATE_PATH)) {
-    return;
-  }
-  try {
-    const all = JSON.parse(fs.readFileSync(STATE_PATH, 'utf8'));
-    delete all[sessionId];
-    fs.writeFileSync(STATE_PATH, JSON.stringify(all, null, 2));
-  } catch {
-    // ignore errors during cleanup
-  }
 }
 
 describe('check_pipeline.js', () => {
@@ -61,34 +38,20 @@ describe('check_pipeline.js', () => {
   });
 
   it('exits 0 when session mode is free', () => {
-    setSessionState(SESSION_ID, {
-      mode: 'free',
-      pipeline: '.pipeline/pipeline.yaml',
-      current_step: 'plan',
-      completed_steps: [],
-      visit_counts: {},
-      shared_state: {},
-    });
+    setSessionState(SESSION_ID, createSessionState({ mode: 'free' }));
     const result = runHook(SESSION_ID);
     expect(result.status).toBe(0);
     expect(result.stdout).toBe('');
   });
 
   it('exits 2 and injects agent step prompt when pipeline is active', () => {
-    setSessionState(SESSION_ID, {
-      mode: 'pipeline',
-      pipeline: '.pipeline/pipeline.yaml',
-      current_step: 'plan',
-      completed_steps: [],
-      visit_counts: {},
-      shared_state: {},
-    });
+    setSessionState(SESSION_ID, createSessionState());
     const result = runHook(SESSION_ID);
     expect(result.status).toBe(2);
     expect(result.stdout).toBe('');
     expect(result.stderr).toContain('🔄 plan');
     expect(result.stderr).toContain(
-      "Pipeline active — current step: 'plan' (type=agent)"
+      "Pipeline step: 'plan' (type=agent)"
     );
     expect(result.stderr).toContain(
       'Writing a step-by-step implementation plan.'
@@ -96,14 +59,11 @@ describe('check_pipeline.js', () => {
   });
 
   it('exits 2 and shows shell commands when current step is type=shell', () => {
-    setSessionState(SESSION_ID, {
-      mode: 'pipeline',
-      pipeline: '.pipeline/pipeline.yaml',
+    setSessionState(SESSION_ID, createSessionState({
       current_step: 'verify',
       completed_steps: ['plan', 'review_plan', 'implementation', 'docs'],
       visit_counts: { plan: 1, review_plan: 1, implementation: 1, docs: 1 },
-      shared_state: {},
-    });
+    }));
     const result = runHook(SESSION_ID);
     expect(result.status).toBe(2);
     expect(result.stdout).toBe('');
@@ -111,20 +71,16 @@ describe('check_pipeline.js', () => {
       '✅ plan → ✅ review_plan → ✅ implementation → ✅ docs → 🔄 verify'
     );
     expect(result.stderr).toContain(
-      "Pipeline active — current step: 'verify' (type=shell)"
+      "Pipeline step: 'verify' (type=shell)"
     );
     expect(result.stderr).toContain('npm test');
   });
 
   it('exits 2 with error when step visit count reaches max_visits', () => {
-    setSessionState(SESSION_ID, {
-      mode: 'pipeline',
-      pipeline: '.pipeline/pipeline.yaml',
+    setSessionState(SESSION_ID, createSessionState({
       current_step: 'verify',
-      completed_steps: [],
       visit_counts: { verify: 9 },
-      shared_state: {},
-    });
+    }));
     const result = runHook(SESSION_ID);
     expect(result.status).toBe(2);
     expect(result.stdout).toBe('');
@@ -133,86 +89,56 @@ describe('check_pipeline.js', () => {
   });
 
   it('exits 0 and sets mode=free when current step has terminal:true', () => {
-    setSessionState(SESSION_ID, {
-      mode: 'pipeline',
+    setSessionState(SESSION_ID, createSessionState({
       pipeline: 'tests/fixtures/terminal-step.yaml',
       current_step: 'done',
-      completed_steps: [],
-      visit_counts: {},
-      shared_state: {},
-    });
+    }));
     const result = runHook(SESSION_ID);
     expect(result.status).toBe(0);
     expect(result.stdout).toBe('');
   });
 
-  it('interpolates {{step_output}} placeholders in agent prompt', () => {
-    setSessionState(SESSION_ID, {
-      mode: 'pipeline',
-      pipeline: 'examples/pipeline.yaml',
-      current_step: 'plan',
-      completed_steps: ['clarify'],
-      visit_counts: { clarify: 1 },
-      shared_state: { clarify_output: 'use postgres for storage' },
+  describe('with examples/pipeline.yaml and clarify shared state', () => {
+    beforeEach(() => {
+      setSessionState(SESSION_ID, createSessionState({
+        pipeline: 'examples/pipeline.yaml',
+        completed_steps: ['clarify'],
+        visit_counts: { clarify: 1 },
+        shared_state: { clarify_output: 'use postgres for storage' },
+      }));
     });
-    const result = runHook(SESSION_ID);
-    expect(result.status).toBe(2);
-    expect(result.stdout).toBe('');
-    expect(result.stderr).toContain('use postgres for storage');
-    expect(result.stderr).toContain('✅ clarify → 🔄 plan');
+
+    it('interpolates {{step_output}} placeholders in agent prompt', () => {
+      const result = runHook(SESSION_ID);
+      expect(result.status).toBe(2);
+      expect(result.stdout).toBe('');
+      expect(result.stderr).toContain('use postgres for storage');
+      expect(result.stderr).toContain('✅ clarify → 🔄 plan');
+    });
+
+    it('renders template variables and does not emit raw tokens', () => {
+      const result = runHook(SESSION_ID);
+      expect(result.stderr).toContain('use postgres for storage');
+      expect(result.stderr).not.toContain('{{clarify_output}}');
+    });
   });
 
   it('writes full agent step output to stderr', () => {
-    setSessionState(SESSION_ID, {
-      mode: 'pipeline',
-      pipeline: '.pipeline/pipeline.yaml',
-      current_step: 'plan',
-      completed_steps: [],
-      visit_counts: {},
-      shared_state: {},
-    });
+    setSessionState(SESSION_ID, createSessionState());
     const result = runHook(SESSION_ID);
     expect(result.stderr).toContain('Execute the following prompt:');
     expect(result.stderr).toContain('Writing a step-by-step implementation plan.');
   });
 
   it('writes full shell step output to stderr', () => {
-    setSessionState(SESSION_ID, {
-      mode: 'pipeline',
-      pipeline: '.pipeline/pipeline.yaml',
-      current_step: 'verify',
-      completed_steps: [],
-      visit_counts: {},
-      shared_state: {},
-    });
+    setSessionState(SESSION_ID, createSessionState({ current_step: 'verify' }));
     const result = runHook(SESSION_ID);
     expect(result.stderr).toContain('Run these commands in sequence:');
     expect(result.stderr).toContain('npm test');
   });
 
-  it('renders template variables in output and does not emit raw tokens', () => {
-    setSessionState(SESSION_ID, {
-      mode: 'pipeline',
-      pipeline: 'examples/pipeline.yaml',
-      current_step: 'plan',
-      completed_steps: ['clarify'],
-      visit_counts: { clarify: 1 },
-      shared_state: { clarify_output: 'use postgres for storage' },
-    });
-    const result = runHook(SESSION_ID);
-    expect(result.stderr).toContain('use postgres for storage');
-    expect(result.stderr).not.toContain('{{clarify_output}}');
-  });
-
   it('exits 0 silently when pipeline file does not exist', () => {
-    setSessionState(SESSION_ID, {
-      mode: 'pipeline',
-      pipeline: 'nonexistent/pipeline.yaml',
-      current_step: 'plan',
-      completed_steps: [],
-      visit_counts: {},
-      shared_state: {},
-    });
+    setSessionState(SESSION_ID, createSessionState({ pipeline: 'nonexistent/pipeline.yaml' }));
     const result = runHook(SESSION_ID);
     expect(result.status).toBe(0);
     expect(result.stdout).toBe('');

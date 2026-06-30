@@ -230,6 +230,53 @@ function buildProgressHeader(completedSteps, currentStep) {
   return parts.join(' → ');
 }
 
+function readStdin() {
+  return new Promise((resolve) => {
+    let raw = '';
+    process.stdin.setEncoding('utf8');
+    process.stdin.on('data', (chunk) => {
+      raw += chunk;
+    });
+    process.stdin.on('end', () => {
+      resolve(raw);
+    });
+  });
+}
+
+async function parseStdinJSON() {
+  const raw = await readStdin();
+  try {
+    return JSON.parse(raw);
+  } catch {
+    process.exit(0);
+  }
+}
+
+function buildStepOutput(sessionId, stepName, step, sharedState, completedSteps) {
+  const header = buildProgressHeader(completedSteps || [], stepName);
+  if (step.type === 'shell') {
+    const cmds = (step.commands || []).map((c) => `  ${c}`).join('\n');
+    return (
+      `${header}\n\n` +
+      `Pipeline step: '${stepName}' (type=shell)\n\n` +
+      `Run these commands in sequence:\n${cmds}\n\n` +
+      buildShellUpdateBlock(
+        sessionId,
+        stepName,
+        step.next || '',
+        step.next_fail || ''
+      )
+    );
+  }
+  const prompt = render(step.prompt || '', sharedState);
+  return (
+    `${header}\n\n` +
+    `Pipeline step: '${stepName}' (type=agent)\n\n` +
+    `Execute the following prompt:\n---\n${prompt.trim()}\n---\n\n` +
+    buildAgentUpdateBlock(sessionId, stepName, step.next || '')
+  );
+}
+
 module.exports = {
   parseYAML,
   render,
@@ -240,6 +287,9 @@ module.exports = {
   buildAgentUpdateBlock,
   buildShellUpdateBlock,
   buildProgressHeader,
+  buildStepOutput,
+  readStdin,
+  parseStdinJSON,
   PROJECT_ROOT,
   STATE_PATH,
 };

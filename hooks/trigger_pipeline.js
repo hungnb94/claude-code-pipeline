@@ -4,57 +4,15 @@ const fs = require('fs');
 const path = require('path');
 const {
   parseYAML,
-  render,
   setSessionState,
-  buildAgentUpdateBlock,
-  buildShellUpdateBlock,
+  buildStepOutput,
   buildProgressHeader,
+  parseStdinJSON,
   PROJECT_ROOT,
 } = require('./pipeline_utils.js');
 
-function buildStepOutput(
-  sessionId,
-  stepName,
-  step,
-  sharedState,
-  completedSteps
-) {
-  const header = buildProgressHeader(completedSteps || [], stepName);
-  if (step.type === 'shell') {
-    const cmds = (step.commands || []).map((c) => `  ${c}`).join('\n');
-    return (
-      `${header}\n\n` +
-      `Pipeline step: '${stepName}' (type=shell)\n\n` +
-      `Run these commands in sequence:\n${cmds}\n\n` +
-      buildShellUpdateBlock(
-        sessionId,
-        stepName,
-        step.next || '',
-        step.next_fail || ''
-      )
-    );
-  }
-  const prompt = render(step.prompt || '', sharedState);
-  return (
-    `${header}\n\n` +
-    `Pipeline step: '${stepName}' (type=agent)\n\n` +
-    `Execute the following prompt:\n---\n${prompt.trim()}\n---\n\n` +
-    buildAgentUpdateBlock(sessionId, stepName, step.next || '')
-  );
-}
-
-let raw = '';
-process.stdin.setEncoding('utf8');
-process.stdin.on('data', (chunk) => {
-  raw += chunk;
-});
-process.stdin.on('end', () => {
-  let data;
-  try {
-    data = JSON.parse(raw);
-  } catch {
-    process.exit(0);
-  }
+(async () => {
+  const data = await parseStdinJSON();
 
   const prompt = (data.prompt || '').trim();
   if (!prompt.startsWith('/pipeline:run')) {
@@ -134,4 +92,4 @@ process.stdin.on('end', () => {
       '\n'
   );
   process.exit(0);
-});
+})();

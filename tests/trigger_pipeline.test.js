@@ -1,11 +1,14 @@
 const { spawnSync } = require('child_process');
 const { randomUUID } = require('crypto');
-const fs = require('fs');
 const path = require('path');
 
-const PROJECT_ROOT = path.resolve(__dirname, '..');
+const {
+  PROJECT_ROOT,
+  readSessionState,
+  cleanupSession,
+} = require('./helpers');
+
 const HOOK = path.join(PROJECT_ROOT, 'hooks/trigger_pipeline.js');
-const STATE_PATH = path.join(PROJECT_ROOT, '.pipeline/state.json');
 
 function runHook(prompt, sessionId) {
   const input = JSON.stringify({
@@ -19,31 +22,6 @@ function runHook(prompt, sessionId) {
     cwd: PROJECT_ROOT,
     env: { ...process.env, CLAUDE_PROJECT_DIR: PROJECT_ROOT },
   });
-}
-
-function readSessionState(sessionId) {
-  if (!fs.existsSync(STATE_PATH)) {
-    return null;
-  }
-  try {
-    const all = JSON.parse(fs.readFileSync(STATE_PATH, 'utf8'));
-    return all[sessionId] || null;
-  } catch {
-    return null;
-  }
-}
-
-function cleanupSession(sessionId) {
-  if (!fs.existsSync(STATE_PATH)) {
-    return;
-  }
-  try {
-    const all = JSON.parse(fs.readFileSync(STATE_PATH, 'utf8'));
-    delete all[sessionId];
-    fs.writeFileSync(STATE_PATH, JSON.stringify(all, null, 2));
-  } catch (err) {
-    console.error('cleanupSession failed:', err);
-  }
 }
 
 describe('trigger_pipeline.js', () => {
