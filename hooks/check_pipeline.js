@@ -7,18 +7,12 @@ const {
   getSessionState,
   setSessionState,
   buildStepOutput,
-  readStdin,
+  parseStdinJSON,
   PROJECT_ROOT,
 } = require('./pipeline_utils.js');
 
 (async () => {
-  const raw = await readStdin();
-  let data;
-  try {
-    data = JSON.parse(raw);
-  } catch {
-    process.exit(0);
-  }
+  const data = await parseStdinJSON();
 
   const sessionId = data.session_id || '';
   if (!sessionId) {

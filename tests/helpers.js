@@ -43,10 +43,23 @@ function cleanupSession(sessionId) {
   }
 }
 
+function createSessionState(overrides = {}) {
+  return {
+    mode: 'pipeline',
+    pipeline: '.pipeline/pipeline.yaml',
+    current_step: 'plan',
+    completed_steps: [],
+    visit_counts: {},
+    shared_state: {},
+    ...overrides,
+  };
+}
+
 module.exports = {
   PROJECT_ROOT,
   STATE_PATH,
   readSessionState,
   setSessionState,
   cleanupSession,
+  createSessionState,
 };

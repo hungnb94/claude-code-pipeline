@@ -243,6 +243,15 @@ function readStdin() {
   });
 }
 
+async function parseStdinJSON() {
+  const raw = await readStdin();
+  try {
+    return JSON.parse(raw);
+  } catch {
+    process.exit(0);
+  }
+}
+
 function buildStepOutput(sessionId, stepName, step, sharedState, completedSteps) {
   const header = buildProgressHeader(completedSteps || [], stepName);
   if (step.type === 'shell') {
@@ -280,6 +289,7 @@ module.exports = {
   buildProgressHeader,
   buildStepOutput,
   readStdin,
+  parseStdinJSON,
   PROJECT_ROOT,
   STATE_PATH,
 };

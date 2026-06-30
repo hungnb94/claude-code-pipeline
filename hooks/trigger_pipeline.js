@@ -7,18 +7,12 @@ const {
   setSessionState,
   buildStepOutput,
   buildProgressHeader,
-  readStdin,
+  parseStdinJSON,
   PROJECT_ROOT,
 } = require('./pipeline_utils.js');
 
 (async () => {
-  const raw = await readStdin();
-  let data;
-  try {
-    data = JSON.parse(raw);
-  } catch {
-    process.exit(0);
-  }
+  const data = await parseStdinJSON();
 
   const prompt = (data.prompt || '').trim();
   if (!prompt.startsWith('/pipeline:run')) {
