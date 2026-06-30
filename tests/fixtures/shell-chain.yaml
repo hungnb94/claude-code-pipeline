@@ -1,0 +1,25 @@
+entry: start
+
+steps:
+  start:
+    type: agent
+    prompt: |
+      Starting step prompt.
+    next: check
+
+  check:
+    type: shell
+    commands:
+      - echo ok
+    next: finish
+    next_fail: fail_step
+
+  fail_step:
+    type: agent
+    prompt: |
+      Shell step failed. Fix it.
+
+  finish:
+    type: agent
+    prompt: |
+      Finished successfully.

@@ -3,7 +3,6 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Edit|MultiEdit|Write",
         "hooks": [
           {
             "type": "command",
