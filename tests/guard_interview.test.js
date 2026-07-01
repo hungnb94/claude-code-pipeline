@@ -1,7 +1,7 @@
 const { spawnSync, randomUUID, PROJECT_ROOT, setSessionState, cleanupSession, createSessionState } = require('./helpers');
 const path = require('path');
 
-const HOOK = path.join(PROJECT_ROOT, 'hooks/guard_requirements.js');
+const HOOK = path.join(PROJECT_ROOT, 'hooks/guard_interview.js');
 
 function runGuard(sessionId, toolName) {
   const input = JSON.stringify({ session_id: sessionId, tool_name: toolName });
@@ -13,7 +13,7 @@ function runGuard(sessionId, toolName) {
   });
 }
 
-describe('guard_requirements.js', () => {
+describe('guard_interview.js', () => {
   let SESSION_ID;
 
   beforeEach(() => {

@@ -148,7 +148,7 @@ Use `max_visits: N` on any step to halt the pipeline with an error if the step i
 
 ## How it works
 
-- **Trigger**: typing `/pipeline:run` fires a `UserPromptSubmit` hook that reads the YAML, initializes pipeline state at `.pipeline/state.json`, and injects the first step's instructions into the conversation.
+- **Trigger**: typing `/pipeline:run` fires a `UserPromptSubmit` hook that reads the YAML, initializes pipeline state at `.pipeline/state.json`, and injects the first step's instructions into the conversation. The step description is also shown to the user directly (via `systemMessage`), so — for example — an interview step's actual question is visible, not just injected as hidden context (see `docs/adr/0005-json-systemmessage-for-userpromptsubmit-visibility.md`).
 - **Continuation**: after each Claude response, a `Stop` hook reads the current step from state and injects the next step's instructions — no user input required between steps.
 - **Interview steps**: when the current step is `type: interview`, the `Stop` hook exits silently so natural multi-turn conversation can continue. A `PreToolUse` hook blocks file-editing tools until requirements are locked.
 - **State**: pipeline state is stored per-session in `.pipeline/state.json`. Multiple concurrent sessions in the same project are isolated by session ID.

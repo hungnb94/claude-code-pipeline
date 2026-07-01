@@ -5,6 +5,7 @@ const path = require('path');
 const {
   parseYAML,
   setSessionState,
+  buildStepDescription,
   buildStepOutput,
   parseStdinJSON,
   PROJECT_ROOT,
@@ -95,16 +96,19 @@ const {
     shared_state: { user_requirements: userRequirements },
   });
 
-  const stepOutput = buildStepOutput(
-    sessionId,
-    config.entry,
-    entryStep,
-    { user_requirements: userRequirements }
-  );
+  const initLine = `Pipeline initialized from '${pipelineFile}'. Entry: '${config.entry}'.`;
+  const sharedState = { user_requirements: userRequirements };
+  const stepOutput = buildStepOutput(sessionId, config.entry, entryStep, sharedState);
+  const stepDescription = buildStepDescription(config.entry, entryStep, sharedState);
+
   process.stdout.write(
-    `Pipeline initialized from '${pipelineFile}'. Entry: '${config.entry}'.\n\n` +
-      stepOutput +
-      '\n'
+    JSON.stringify({
+      systemMessage: `${initLine}\n\n${stepDescription}`,
+      hookSpecificOutput: {
+        hookEventName: 'UserPromptSubmit',
+        additionalContext: `${initLine}\n\n${stepOutput}`,
+      },
+    })
   );
   process.exit(0);
 })();

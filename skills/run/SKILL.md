@@ -31,6 +31,10 @@ Runs a pipeline defined in a YAML file. The pipeline executes steps automaticall
 3. After each step completes, the Stop hook advances to the next step automatically
 4. The pipeline ends when a terminal step is reached or a step has no `next`
 
+## Executing an injected step prompt
+
+Each step's prompt is injected verbatim via hook context — execute it exactly as given, including invoking any skill or command it references (e.g. `/interview-wiki`). Do not substitute your own ad-hoc approach (for example, asking your own improvised questions instead of running a referenced interview skill) even if it seems equivalent — the injected prompt is the step's contract with the rest of the pipeline.
+
 ## Pipeline YAML format
 
 ```yaml
