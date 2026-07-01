@@ -6,7 +6,6 @@ const {
   parseYAML,
   setSessionState,
   buildStepOutput,
-  buildProgressHeader,
   parseStdinJSON,
   PROJECT_ROOT,
 } = require('./pipeline_utils.js');
@@ -82,10 +81,8 @@ const {
     sessionId,
     config.entry,
     entryStep,
-    { user_requirements: userRequirements },
-    []
+    { user_requirements: userRequirements }
   );
-  process.stderr.write(buildProgressHeader([], config.entry) + '\n');
   process.stdout.write(
     `Pipeline initialized from '${pipelineFile}'. Entry: '${config.entry}'.\n\n` +
       stepOutput +

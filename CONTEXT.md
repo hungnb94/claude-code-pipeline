@@ -70,8 +70,8 @@ The session ID is provided to hooks via hook input. Each session reads and write
 
 ### Setup Statusline Skill
 
-A Claude Code skill (`/pipeline:setup-statusline`) that appends a pipeline state block to the user's configured status line script. Reads the `statusLine` key from Claude Code settings, adapts the block to the script's language and conventions, and is idempotent.
+A Claude Code skill (`/pipeline:setup-statusline`) that appends a pipeline state block to the user's configured status line script. Reads the `statusLine` key from Claude Code settings, adapts the block to the script's language and conventions, and is idempotent. It superseded the per-step progress header that both hooks used to write to stderr (`✅ prev-step → 🔄 current-step`) — that header was removed since this skill shows the same info persistently, plus pipeline name and retry count. See `docs/adr/0002-stderr-for-progress-header-visibility.md` (Superseded).
 
 ### Version
 
-The semantic version string (`major.minor.patch`) recorded in `package.json` and `.claude-plugin/plugin.json`. Both files must always hold the same value. The `bump_version` pipeline step is responsible for choosing and applying the correct bump level based on the nature of the changes in the current branch. If the version already differs from `origin/main`, the step skips the bump — ensuring at most one version bump per branch regardless of how many times the pipeline is run.
+The semantic version string (`major.minor.patch`) recorded in `package.json`, `.claude-plugin/plugin.json`, and `.claude-plugin/marketplace.json` (`plugins[0].version`). All three files must always hold the same value. The `bump_version` pipeline step is responsible for choosing and applying the correct bump level based on the nature of the changes in the current branch. It compares `package.json`'s version against `origin/main`'s: if the value is unchanged, the branch hasn't been bumped yet and the step proceeds; if it already differs, a prior pipeline run on this branch already bumped it and the step skips — ensuring at most one version bump per branch regardless of how many times the pipeline is run.

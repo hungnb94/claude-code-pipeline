@@ -118,8 +118,6 @@ describe('trigger_pipeline.js', () => {
       "Pipeline initialized from '.pipeline/pipeline.yaml'"
     );
     expect(result.stdout).toContain("Pipeline step: 'plan'");
-    expect(result.stdout).toContain('🔄 plan');
-    expect(result.stderr).toContain('🔄 plan');
 
     const state = readSessionState(SESSION_ID);
     expect(state).not.toBeNull();
@@ -140,8 +138,6 @@ describe('trigger_pipeline.js', () => {
       "Pipeline initialized from 'examples/pipeline.yaml'"
     );
     expect(result.stdout).toContain("Pipeline step: 'clarify'");
-    expect(result.stdout).toContain('🔄 clarify');
-    expect(result.stderr).toContain('🔄 clarify');
 
     const state = readSessionState(SESSION_ID);
     expect(state).not.toBeNull();

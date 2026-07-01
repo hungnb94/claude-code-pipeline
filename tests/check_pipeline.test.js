@@ -49,7 +49,6 @@ describe('check_pipeline.js', () => {
     const result = runHook(SESSION_ID);
     expect(result.status).toBe(2);
     expect(result.stdout).toBe('');
-    expect(result.stderr).toContain('🔄 plan');
     expect(result.stderr).toContain(
       "Pipeline step: 'plan' (type=agent)"
     );
@@ -67,9 +66,6 @@ describe('check_pipeline.js', () => {
     const result = runHook(SESSION_ID);
     expect(result.status).toBe(2);
     expect(result.stdout).toBe('');
-    expect(result.stderr).toContain(
-      '✅ plan → ✅ review_plan → ✅ implementation → ✅ docs → 🔄 verify'
-    );
     expect(result.stderr).toContain(
       "Pipeline step: 'verify' (type=shell)"
     );
@@ -113,7 +109,6 @@ describe('check_pipeline.js', () => {
       expect(result.status).toBe(2);
       expect(result.stdout).toBe('');
       expect(result.stderr).toContain('use postgres for storage');
-      expect(result.stderr).toContain('✅ clarify → 🔄 plan');
     });
 
     it('renders template variables and does not emit raw tokens', () => {
