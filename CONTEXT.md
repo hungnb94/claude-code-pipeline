@@ -70,7 +70,7 @@ The session ID is provided to hooks via hook input. Each session reads and write
 
 ### Setup Statusline Skill
 
-A Claude Code skill (`/pipeline:setup-statusline`) that appends a pipeline state block to the user's configured status line script. Reads the `statusLine` key from Claude Code settings, adapts the block to the script's language and conventions, and is idempotent.
+A Claude Code skill (`/pipeline:setup-statusline`) that appends a pipeline state block to the user's configured status line script. Reads the `statusLine` key from Claude Code settings, adapts the block to the script's language and conventions, and is idempotent. It superseded the per-step progress header that both hooks used to write to stderr (`✅ prev-step → 🔄 current-step`) — that header was removed since this skill shows the same info persistently, plus pipeline name and retry count. See `docs/adr/0002-stderr-for-progress-header-visibility.md` (Superseded).
 
 ### Version
 
