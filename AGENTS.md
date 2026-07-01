@@ -13,6 +13,7 @@ Key paths:
 - `tests/` — Jest test suite (`npm test`)
 - `.claude-plugin/plugin.json` — plugin manifest (name, version)
 - `package.json` — also holds the version string
+- `.claude-plugin/marketplace.json` (`plugins[0].version`) — also holds the version string
 
 ## Conventions
 
@@ -22,5 +23,5 @@ Key paths:
 
 ## Development rules
 
-- **Never hand-edit the version string** in `package.json` or `.claude-plugin/plugin.json`. Version bumps go through the `bump_version` pipeline step, which picks the correct semver level and updates both files atomically.
-- Both `package.json` and `.claude-plugin/plugin.json` must always hold the same version value — treat a mismatch as a bug.
+- **Never hand-edit the version string** in `package.json`, `.claude-plugin/plugin.json`, or `.claude-plugin/marketplace.json`. Version bumps go through the `bump_version` pipeline step, which picks the correct semver level and updates all three files atomically.
+- `package.json`, `.claude-plugin/plugin.json`, and `.claude-plugin/marketplace.json` must always hold the same version value — treat a mismatch as a bug.
