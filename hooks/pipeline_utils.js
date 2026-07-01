@@ -222,14 +222,6 @@ function buildShellUpdateBlock(sessionId, stepName, next, nextFail) {
   );
 }
 
-function buildProgressHeader(completedSteps, currentStep) {
-  const parts = [
-    ...(completedSteps || []).map((s) => `✅ ${s}`),
-    `🔄 ${currentStep}`,
-  ];
-  return parts.join(' → ');
-}
-
 function readStdin() {
   return new Promise((resolve) => {
     let raw = '';
@@ -252,12 +244,10 @@ async function parseStdinJSON() {
   }
 }
 
-function buildStepOutput(sessionId, stepName, step, sharedState, completedSteps) {
-  const header = buildProgressHeader(completedSteps || [], stepName);
+function buildStepOutput(sessionId, stepName, step, sharedState) {
   if (step.type === 'shell') {
     const cmds = (step.commands || []).map((c) => `  ${c}`).join('\n');
     return (
-      `${header}\n\n` +
       `Pipeline step: '${stepName}' (type=shell)\n\n` +
       `Run these commands in sequence:\n${cmds}\n\n` +
       buildShellUpdateBlock(
@@ -270,7 +260,6 @@ function buildStepOutput(sessionId, stepName, step, sharedState, completedSteps)
   }
   const prompt = render(step.prompt || '', sharedState);
   return (
-    `${header}\n\n` +
     `Pipeline step: '${stepName}' (type=agent)\n\n` +
     `Execute the following prompt:\n---\n${prompt.trim()}\n---\n\n` +
     buildAgentUpdateBlock(sessionId, stepName, step.next || '')
@@ -286,7 +275,6 @@ module.exports = {
   setSessionState,
   buildAgentUpdateBlock,
   buildShellUpdateBlock,
-  buildProgressHeader,
   buildStepOutput,
   readStdin,
   parseStdinJSON,

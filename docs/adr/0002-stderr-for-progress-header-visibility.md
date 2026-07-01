@@ -1,7 +1,11 @@
 # ADR 0002: Write progress header to stderr for user visibility
 
-**Status**: Accepted  
+**Status**: Superseded (2026-07-01)  
 **Date**: 2026-06-15
+
+## Superseded
+
+The progress header was removed entirely. The `/pipeline:setup-statusline` skill (added after this ADR) reads `.pipeline/state.json` directly and renders a persistent, superset equivalent (`[pipeline-name] ✅ prev-step → 🔄 current-step`, plus retry count) in the status line — making the per-step stderr notification redundant. See `CONTEXT.md` (Setup Statusline Skill) for the replacement.
 
 ## Context
 

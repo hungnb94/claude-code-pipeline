@@ -60,15 +60,8 @@ const {
   }
 
   const sharedState = state.shared_state || {};
-  const completedSteps = state.completed_steps || [];
 
-  const output = buildStepOutput(
-    sessionId,
-    current,
-    step,
-    sharedState,
-    completedSteps
-  );
+  const output = buildStepOutput(sessionId, current, step, sharedState);
 
   process.stderr.write(output + '\n');
   process.exit(2);
