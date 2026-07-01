@@ -108,10 +108,12 @@ steps:
 
       Steps:
       1. Read the current version from package.json
-      2. Run `git diff origin/main -- package.json` and check if the version field already differs from main. If it does, the version was already bumped in a previous pipeline run on this branch — skip the bump and output "version already bumped on this branch".
+      2. Run `git diff origin/main -- package.json`.
+         - Non-empty diff (version differs from origin/main) means a previous pipeline run on this branch ALREADY bumped it — skip the bump and output "version already bumped on this branch".
+         - Empty diff (version matches origin/main) means it has NOT been bumped yet — proceed to step 3.
       3. Run `git diff main --name-only` to see which files changed, then read the commit messages with `git log main..HEAD --oneline` to understand what was done
       4. Choose the appropriate bump level and justify it in one sentence
-      5. Update the version field in both package.json, .claude-plugin/plugin.json, .claude-plugin/marketplace.json to the new version
+      5. Update the version field in all three files: package.json, .claude-plugin/plugin.json, .claude-plugin/marketplace.json (plugins[0].version) to the new version
     next: pr
     max_visits: 1
 

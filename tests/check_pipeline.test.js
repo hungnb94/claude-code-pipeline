@@ -1,5 +1,14 @@
 const path = require('path');
-const { PROJECT_ROOT, setSessionState, cleanupSession, createSessionState, spawnSync, randomUUID } = require('./helpers');
+const { spawnSync } = require('child_process');
+const { randomUUID } = require('crypto');
+
+const {
+  PROJECT_ROOT,
+  setSessionState,
+  cleanupSession,
+  createSessionState,
+  readSessionState,
+} = require('./helpers');
 
 const HOOK = path.join(PROJECT_ROOT, 'hooks/check_pipeline.js');
 
@@ -11,6 +20,14 @@ function runHook(sessionId) {
     cwd: PROJECT_ROOT,
     env: { ...process.env, CLAUDE_PROJECT_DIR: PROJECT_ROOT },
   });
+}
+
+function runHookAndBlock(sessionId) {
+  const result = runHook(sessionId);
+  expect(result.status).toBe(0);
+  const payload = JSON.parse(result.stdout);
+  expect(payload.decision).toBe('block');
+  return payload;
 }
 
 describe('check_pipeline.js', () => {
@@ -36,48 +53,76 @@ describe('check_pipeline.js', () => {
     expect(result.stdout).toBe('');
   });
 
-  it('exits 2 and injects agent step prompt when pipeline is active', () => {
+  it('blocks stop and injects agent step prompt when pipeline is active', () => {
     setSessionState(SESSION_ID, createSessionState());
-    const result = runHook(SESSION_ID);
-    expect(result.status).toBe(2);
-    expect(result.stdout).toBe('');
-    expect(result.stderr).toContain('🔄 plan');
-    expect(result.stderr).toContain(
+    const payload = runHookAndBlock(SESSION_ID);
+    expect(payload.reason).toContain("Pipeline step: 'plan' (type=agent)");
+    expect(payload.reason).toContain(
+      'Write a step-by-step implementation plan for the following requirements:'
+    );
+    expect(payload.systemMessage).toContain(
       "Pipeline step: 'plan' (type=agent)"
     );
-    expect(result.stderr).toContain(
+    expect(payload.systemMessage).toContain(
       'Write a step-by-step implementation plan for the following requirements:'
     );
   });
 
-  it('exits 2 and shows shell commands when current step is type=shell', () => {
+  it('blocks stop and shows shell commands when current step is type=shell', () => {
     setSessionState(SESSION_ID, createSessionState({
       current_step: 'verify',
       completed_steps: ['plan', 'review_plan', 'implementation', 'docs'],
       visit_counts: { plan: 1, review_plan: 1, implementation: 1, docs: 1 },
     }));
-    const result = runHook(SESSION_ID);
-    expect(result.status).toBe(2);
-    expect(result.stdout).toBe('');
-    expect(result.stderr).toContain(
-      '✅ plan → ✅ review_plan → ✅ implementation → ✅ docs → 🔄 verify'
-    );
-    expect(result.stderr).toContain(
-      "Pipeline step: 'verify' (type=shell)"
-    );
-    expect(result.stderr).toContain('npm test');
+    const payload = runHookAndBlock(SESSION_ID);
+    expect(payload.reason).toContain("Pipeline step: 'verify' (type=shell)");
+    expect(payload.reason).toContain('npm test');
+    expect(payload.systemMessage).toContain('npm test');
   });
 
-  it('exits 2 with error when step visit count reaches max_visits', () => {
+  it('auto-marks step as succeeded and advances to next when max_visits is reached', () => {
     setSessionState(SESSION_ID, createSessionState({
       current_step: 'verify',
       visit_counts: { verify: 9 },
     }));
+    const payload = runHookAndBlock(SESSION_ID);
+    expect(payload.reason).toContain('max_visits');
+    expect(payload.reason).toContain("advancing to 'lint'");
+    expect(payload.reason).toContain("Pipeline step: 'lint' (type=shell)");
+    expect(payload.systemMessage).toContain("advancing to 'lint'");
+
+    const state = readSessionState(SESSION_ID);
+    expect(state.current_step).toBe('lint');
+    expect(state.completed_steps).toContain('verify');
+  });
+
+  it('ends the pipeline (mode=free) when a maxed-out step has no next', () => {
+    setSessionState(SESSION_ID, createSessionState({
+      pipeline: 'tests/fixtures/max-visits-no-next.yaml',
+      current_step: 'maxed_no_next',
+      visit_counts: { maxed_no_next: 5 },
+    }));
     const result = runHook(SESSION_ID);
-    expect(result.status).toBe(2);
+    expect(result.status).toBe(0);
     expect(result.stdout).toBe('');
-    expect(result.stderr).toContain('max_visits');
-    expect(result.stderr).toContain('Pipeline error');
+
+    const state = readSessionState(SESSION_ID);
+    expect(state.mode).toBe('free');
+    expect(state.completed_steps).toContain('maxed_no_next');
+  });
+
+  it('halts with a cycle error instead of hanging when maxed-out steps point at each other', () => {
+    setSessionState(SESSION_ID, createSessionState({
+      pipeline: 'tests/fixtures/max-visits-cycle.yaml',
+      current_step: 'a',
+      visit_counts: { a: 5, b: 5 },
+    }));
+    const payload = runHookAndBlock(SESSION_ID);
+    expect(payload.reason).toContain('cycle detected');
+    expect(payload.systemMessage).toContain('cycle detected');
+
+    const state = readSessionState(SESSION_ID);
+    expect(state.mode).toBe('free');
   });
 
   it('exits 0 and sets mode=free when current step has terminal:true', () => {
@@ -101,32 +146,35 @@ describe('check_pipeline.js', () => {
     });
 
     it('interpolates {{step_output}} placeholders in agent prompt', () => {
-      const result = runHook(SESSION_ID);
-      expect(result.status).toBe(2);
-      expect(result.stdout).toBe('');
-      expect(result.stderr).toContain('use postgres for storage');
-      expect(result.stderr).toContain('✅ clarify → 🔄 plan');
+      const payload = runHookAndBlock(SESSION_ID);
+      expect(payload.reason).toContain('use postgres for storage');
     });
 
     it('renders template variables and does not emit raw tokens', () => {
-      const result = runHook(SESSION_ID);
-      expect(result.stderr).toContain('use postgres for storage');
-      expect(result.stderr).not.toContain('{{clarify_output}}');
+      const payload = runHookAndBlock(SESSION_ID);
+      expect(payload.reason).toContain('use postgres for storage');
+      expect(payload.reason).not.toContain('{{clarify_output}}');
     });
   });
 
-  it('writes full agent step output to stderr', () => {
+  it('writes full agent step output to reason', () => {
     setSessionState(SESSION_ID, createSessionState());
-    const result = runHook(SESSION_ID);
-    expect(result.stderr).toContain('Execute the following prompt:');
-    expect(result.stderr).toContain('Write a step-by-step implementation plan for the following requirements:');
+    const payload = runHookAndBlock(SESSION_ID);
+    expect(payload.reason).toContain('Execute the following prompt:');
+    expect(payload.reason).toContain('Write a step-by-step implementation plan for the following requirements:');
   });
 
-  it('writes full shell step output to stderr', () => {
+  it('writes full shell step output to reason', () => {
     setSessionState(SESSION_ID, createSessionState({ current_step: 'verify' }));
-    const result = runHook(SESSION_ID);
-    expect(result.stderr).toContain('Run these commands in sequence:');
-    expect(result.stderr).toContain('npm test');
+    const payload = runHookAndBlock(SESSION_ID);
+    expect(payload.reason).toContain('Run these commands in sequence:');
+    expect(payload.reason).toContain('npm test');
+  });
+
+  it('does not leak the state-update python block into systemMessage', () => {
+    setSessionState(SESSION_ID, createSessionState());
+    const payload = runHookAndBlock(SESSION_ID);
+    expect(payload.systemMessage).not.toContain('python3');
   });
 
   it('exits 0 silently when pipeline file does not exist', () => {
@@ -147,15 +195,14 @@ describe('check_pipeline.js', () => {
     expect(result.stderr).toBe('');
   });
 
-  it('exits 2 and injects next step after requirements are locked', () => {
+  it('injects next step after requirements are locked', () => {
     setSessionState(SESSION_ID, createSessionState({
       pipeline: 'tests/fixtures/interview-entry.yaml',
       current_step: 'plan',
       completed_steps: ['gather_requirements'],
       shared_state: { requirements_locked: 'true', user_requirements: 'Build a todo app' },
     }));
-    const result = runHook(SESSION_ID);
-    expect(result.status).toBe(2);
-    expect(result.stderr).toContain('(type=agent)');
+    const payload = runHookAndBlock(SESSION_ID);
+    expect(payload.reason).toContain('(type=agent)');
   });
 });

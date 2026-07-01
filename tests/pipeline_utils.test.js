@@ -8,7 +8,6 @@ const {
   render,
   buildAgentUpdateBlock,
   buildShellUpdateBlock,
-  buildProgressHeader,
   buildInterviewUpdateBlock,
   buildStepOutput,
 } = require('../hooks/pipeline_utils.js');
@@ -219,32 +218,6 @@ describe('default pipeline routing', () => {
   });
 });
 
-describe('buildProgressHeader', () => {
-  it('shows only current step when no steps completed', () => {
-    expect(buildProgressHeader([], 'plan')).toBe('🔄 plan');
-  });
-
-  it('shows completed steps before current step', () => {
-    expect(buildProgressHeader(['plan', 'review'], 'implement')).toBe(
-      '✅ plan → ✅ review → 🔄 implement'
-    );
-  });
-
-  it('shows single completed step before current step', () => {
-    expect(buildProgressHeader(['plan'], 'review')).toBe('✅ plan → 🔄 review');
-  });
-
-  it('handles repeated step names from cycles', () => {
-    expect(buildProgressHeader(['verify', 'fix', 'verify'], 'fix')).toBe(
-      '✅ verify → ✅ fix → ✅ verify → 🔄 fix'
-    );
-  });
-
-  it('treats missing completedSteps as empty', () => {
-    expect(buildProgressHeader(undefined, 'plan')).toBe('🔄 plan');
-  });
-});
-
 describe('buildInterviewUpdateBlock', () => {
   it('sets requirements_locked', () => {
     const result = buildInterviewUpdateBlock('sess1', 'gather', 'plan');
@@ -260,8 +233,7 @@ describe('buildStepOutput', () => {
       'sess1',
       'gather',
       { type: 'interview', prompt: 'Hello', next: 'plan' },
-      {},
-      []
+      {}
     );
     expect(result).toContain('(type=interview)');
     expect(result).not.toContain('Execute the following prompt');

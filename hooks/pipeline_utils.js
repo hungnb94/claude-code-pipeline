@@ -248,14 +248,6 @@ function buildShellUpdateBlock(sessionId, stepName, next, nextFail) {
   );
 }
 
-function buildProgressHeader(completedSteps, currentStep) {
-  const parts = [
-    ...(completedSteps || []).map((s) => `✅ ${s}`),
-    `🔄 ${currentStep}`,
-  ];
-  return parts.join(' → ');
-}
-
 function readStdin() {
   return new Promise((resolve) => {
     let raw = '';
@@ -278,23 +270,38 @@ async function parseStdinJSON() {
   }
 }
 
-function buildStepOutput(sessionId, stepName, step, sharedState, completedSteps) {
-  const header = buildProgressHeader(completedSteps || [], stepName);
+function buildStepDescription(stepName, step, sharedState) {
   if (step.type === 'interview') {
     const prompt = render(step.prompt || '', sharedState);
     return (
-      `${header}\n\n` +
-      `Pipeline step: '${stepName}' (type=interview)\n\n` +
-      `${prompt.trim()}\n\n` +
-      buildInterviewUpdateBlock(sessionId, stepName, step.next || '')
+      `Pipeline step: '${stepName}' (type=interview)\n\n` + `${prompt.trim()}`
     );
   }
   if (step.type === 'shell') {
     const cmds = (step.commands || []).map((c) => `  ${c}`).join('\n');
     return (
-      `${header}\n\n` +
       `Pipeline step: '${stepName}' (type=shell)\n\n` +
-      `Run these commands in sequence:\n${cmds}\n\n` +
+      `Run these commands in sequence:\n${cmds}`
+    );
+  }
+  const prompt = render(step.prompt || '', sharedState);
+  return (
+    `Pipeline step: '${stepName}' (type=agent)\n\n` +
+    `Execute the following prompt:\n---\n${prompt.trim()}\n---`
+  );
+}
+
+function buildStepOutput(sessionId, stepName, step, sharedState) {
+  const description = buildStepDescription(stepName, step, sharedState);
+  if (step.type === 'interview') {
+    return (
+      `${description}\n\n` +
+      buildInterviewUpdateBlock(sessionId, stepName, step.next || '')
+    );
+  }
+  if (step.type === 'shell') {
+    return (
+      `${description}\n\n` +
       buildShellUpdateBlock(
         sessionId,
         stepName,
@@ -303,11 +310,8 @@ function buildStepOutput(sessionId, stepName, step, sharedState, completedSteps)
       )
     );
   }
-  const prompt = render(step.prompt || '', sharedState);
   return (
-    `${header}\n\n` +
-    `Pipeline step: '${stepName}' (type=agent)\n\n` +
-    `Execute the following prompt:\n---\n${prompt.trim()}\n---\n\n` +
+    `${description}\n\n` +
     buildAgentUpdateBlock(sessionId, stepName, step.next || '')
   );
 }
@@ -345,7 +349,7 @@ module.exports = {
   buildAgentUpdateBlock,
   buildInterviewUpdateBlock,
   buildShellUpdateBlock,
-  buildProgressHeader,
+  buildStepDescription,
   buildStepOutput,
   readStdin,
   parseStdinJSON,

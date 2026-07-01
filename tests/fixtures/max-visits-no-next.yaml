@@ -1,0 +1,8 @@
+entry: maxed_no_next
+
+steps:
+  maxed_no_next:
+    type: shell
+    commands:
+      - npm test
+    max_visits: 5
