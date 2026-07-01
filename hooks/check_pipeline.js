@@ -6,6 +6,7 @@ const {
   parseYAML,
   getSessionState,
   setSessionState,
+  buildStepDescription,
   buildStepOutput,
   parseStdinJSON,
   PROJECT_ROOT,
@@ -54,10 +55,15 @@ const {
     if (seen.has(current)) {
       state.mode = 'free';
       setSessionState(sessionId, state);
-      process.stderr.write(
-        `Pipeline error: cycle detected among max_visits-exhausted steps (${[...seen, current].join(' -> ')}). Pipeline halted.\n`
+      const reason = `Pipeline error: cycle detected among max_visits-exhausted steps (${[...seen, current].join(' -> ')}). Pipeline halted.`;
+      process.stdout.write(
+        JSON.stringify({
+          decision: 'block',
+          reason,
+          systemMessage: `❌ ${reason}`,
+        })
       );
-      process.exit(2);
+      process.exit(0);
     }
     seen.add(current);
     skipped.push(current);
@@ -90,11 +96,18 @@ const {
   const sharedState = state.shared_state || {};
 
   const output = buildStepOutput(sessionId, current, step, sharedState);
+  const systemMessage = buildStepDescription(current, step, sharedState);
   const prefix =
     skipped.length > 0
       ? `⚠️ Step(s) ${skipped.map((s) => `'${s}'`).join(', ')} reached max_visits — auto-marked as succeeded, advancing to '${current}'.\n\n`
       : '';
 
-  process.stderr.write(prefix + output + '\n');
-  process.exit(2);
+  process.stdout.write(
+    JSON.stringify({
+      decision: 'block',
+      reason: prefix + output,
+      systemMessage: prefix + systemMessage,
+    })
+  );
+  process.exit(0);
 })();

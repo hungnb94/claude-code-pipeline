@@ -244,12 +244,26 @@ async function parseStdinJSON() {
   }
 }
 
-function buildStepOutput(sessionId, stepName, step, sharedState) {
+function buildStepDescription(stepName, step, sharedState) {
   if (step.type === 'shell') {
     const cmds = (step.commands || []).map((c) => `  ${c}`).join('\n');
     return (
       `Pipeline step: '${stepName}' (type=shell)\n\n` +
-      `Run these commands in sequence:\n${cmds}\n\n` +
+      `Run these commands in sequence:\n${cmds}`
+    );
+  }
+  const prompt = render(step.prompt || '', sharedState);
+  return (
+    `Pipeline step: '${stepName}' (type=agent)\n\n` +
+    `Execute the following prompt:\n---\n${prompt.trim()}\n---`
+  );
+}
+
+function buildStepOutput(sessionId, stepName, step, sharedState) {
+  const description = buildStepDescription(stepName, step, sharedState);
+  if (step.type === 'shell') {
+    return (
+      `${description}\n\n` +
       buildShellUpdateBlock(
         sessionId,
         stepName,
@@ -258,10 +272,8 @@ function buildStepOutput(sessionId, stepName, step, sharedState) {
       )
     );
   }
-  const prompt = render(step.prompt || '', sharedState);
   return (
-    `Pipeline step: '${stepName}' (type=agent)\n\n` +
-    `Execute the following prompt:\n---\n${prompt.trim()}\n---\n\n` +
+    `${description}\n\n` +
     buildAgentUpdateBlock(sessionId, stepName, step.next || '')
   );
 }
@@ -275,6 +287,7 @@ module.exports = {
   setSessionState,
   buildAgentUpdateBlock,
   buildShellUpdateBlock,
+  buildStepDescription,
   buildStepOutput,
   readStdin,
   parseStdinJSON,

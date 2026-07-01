@@ -22,6 +22,14 @@ function runHook(sessionId) {
   });
 }
 
+function runHookAndBlock(sessionId) {
+  const result = runHook(sessionId);
+  expect(result.status).toBe(0);
+  const payload = JSON.parse(result.stdout);
+  expect(payload.decision).toBe('block');
+  return payload;
+}
+
 describe('check_pipeline.js', () => {
   let SESSION_ID;
 
@@ -45,32 +53,31 @@ describe('check_pipeline.js', () => {
     expect(result.stdout).toBe('');
   });
 
-  it('exits 2 and injects agent step prompt when pipeline is active', () => {
+  it('blocks stop and injects agent step prompt when pipeline is active', () => {
     setSessionState(SESSION_ID, createSessionState());
-    const result = runHook(SESSION_ID);
-    expect(result.status).toBe(2);
-    expect(result.stdout).toBe('');
-    expect(result.stderr).toContain(
+    const payload = runHookAndBlock(SESSION_ID);
+    expect(payload.reason).toContain("Pipeline step: 'plan' (type=agent)");
+    expect(payload.reason).toContain(
+      'Writing a step-by-step implementation plan.'
+    );
+    expect(payload.systemMessage).toContain(
       "Pipeline step: 'plan' (type=agent)"
     );
-    expect(result.stderr).toContain(
+    expect(payload.systemMessage).toContain(
       'Writing a step-by-step implementation plan.'
     );
   });
 
-  it('exits 2 and shows shell commands when current step is type=shell', () => {
+  it('blocks stop and shows shell commands when current step is type=shell', () => {
     setSessionState(SESSION_ID, createSessionState({
       current_step: 'verify',
       completed_steps: ['plan', 'review_plan', 'implementation', 'docs'],
       visit_counts: { plan: 1, review_plan: 1, implementation: 1, docs: 1 },
     }));
-    const result = runHook(SESSION_ID);
-    expect(result.status).toBe(2);
-    expect(result.stdout).toBe('');
-    expect(result.stderr).toContain(
-      "Pipeline step: 'verify' (type=shell)"
-    );
-    expect(result.stderr).toContain('npm test');
+    const payload = runHookAndBlock(SESSION_ID);
+    expect(payload.reason).toContain("Pipeline step: 'verify' (type=shell)");
+    expect(payload.reason).toContain('npm test');
+    expect(payload.systemMessage).toContain('npm test');
   });
 
   it('auto-marks step as succeeded and advances to next when max_visits is reached', () => {
@@ -78,12 +85,11 @@ describe('check_pipeline.js', () => {
       current_step: 'verify',
       visit_counts: { verify: 9 },
     }));
-    const result = runHook(SESSION_ID);
-    expect(result.status).toBe(2);
-    expect(result.stdout).toBe('');
-    expect(result.stderr).toContain('max_visits');
-    expect(result.stderr).toContain("advancing to 'lint'");
-    expect(result.stderr).toContain("Pipeline step: 'lint' (type=shell)");
+    const payload = runHookAndBlock(SESSION_ID);
+    expect(payload.reason).toContain('max_visits');
+    expect(payload.reason).toContain("advancing to 'lint'");
+    expect(payload.reason).toContain("Pipeline step: 'lint' (type=shell)");
+    expect(payload.systemMessage).toContain("advancing to 'lint'");
 
     const state = readSessionState(SESSION_ID);
     expect(state.current_step).toBe('lint');
@@ -111,10 +117,9 @@ describe('check_pipeline.js', () => {
       current_step: 'a',
       visit_counts: { a: 5, b: 5 },
     }));
-    const result = runHook(SESSION_ID);
-    expect(result.status).toBe(2);
-    expect(result.stdout).toBe('');
-    expect(result.stderr).toContain('cycle detected');
+    const payload = runHookAndBlock(SESSION_ID);
+    expect(payload.reason).toContain('cycle detected');
+    expect(payload.systemMessage).toContain('cycle detected');
 
     const state = readSessionState(SESSION_ID);
     expect(state.mode).toBe('free');
@@ -141,31 +146,35 @@ describe('check_pipeline.js', () => {
     });
 
     it('interpolates {{step_output}} placeholders in agent prompt', () => {
-      const result = runHook(SESSION_ID);
-      expect(result.status).toBe(2);
-      expect(result.stdout).toBe('');
-      expect(result.stderr).toContain('use postgres for storage');
+      const payload = runHookAndBlock(SESSION_ID);
+      expect(payload.reason).toContain('use postgres for storage');
     });
 
     it('renders template variables and does not emit raw tokens', () => {
-      const result = runHook(SESSION_ID);
-      expect(result.stderr).toContain('use postgres for storage');
-      expect(result.stderr).not.toContain('{{clarify_output}}');
+      const payload = runHookAndBlock(SESSION_ID);
+      expect(payload.reason).toContain('use postgres for storage');
+      expect(payload.reason).not.toContain('{{clarify_output}}');
     });
   });
 
-  it('writes full agent step output to stderr', () => {
+  it('writes full agent step output to reason', () => {
     setSessionState(SESSION_ID, createSessionState());
-    const result = runHook(SESSION_ID);
-    expect(result.stderr).toContain('Execute the following prompt:');
-    expect(result.stderr).toContain('Writing a step-by-step implementation plan.');
+    const payload = runHookAndBlock(SESSION_ID);
+    expect(payload.reason).toContain('Execute the following prompt:');
+    expect(payload.reason).toContain('Writing a step-by-step implementation plan.');
   });
 
-  it('writes full shell step output to stderr', () => {
+  it('writes full shell step output to reason', () => {
     setSessionState(SESSION_ID, createSessionState({ current_step: 'verify' }));
-    const result = runHook(SESSION_ID);
-    expect(result.stderr).toContain('Run these commands in sequence:');
-    expect(result.stderr).toContain('npm test');
+    const payload = runHookAndBlock(SESSION_ID);
+    expect(payload.reason).toContain('Run these commands in sequence:');
+    expect(payload.reason).toContain('npm test');
+  });
+
+  it('does not leak the state-update python block into systemMessage', () => {
+    setSessionState(SESSION_ID, createSessionState());
+    const payload = runHookAndBlock(SESSION_ID);
+    expect(payload.systemMessage).not.toContain('python3');
   });
 
   it('exits 0 silently when pipeline file does not exist', () => {
