@@ -50,7 +50,7 @@ How a step determines its successor. Two fields only:
 
 ### Max Visits
 
-A per-step guard (`max_visits: N`) that halts the pipeline with an error if a step is executed N or more times. Prevents infinite loops in cyclic paths (e.g. a fix → verify → fix cycle). When the limit is reached, the pipeline stops and outputs an error — it does not advance to the next step.
+A per-step guard (`max_visits: N`) that stops a step from being retried more than N times. Prevents infinite loops in cyclic paths (e.g. a fix → verify → fix cycle). When the limit is reached, the step is auto-marked as completed and the pipeline advances to its `next` (the success path — `next_fail` is never used for this) as if it had succeeded; if the step has no `next`, the pipeline ends. If two or more maxed-out steps form a cycle via `next`, the pipeline halts with an error instead of advancing forever.
 
 ### Mode
 
