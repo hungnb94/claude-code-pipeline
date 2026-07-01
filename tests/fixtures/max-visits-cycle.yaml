@@ -1,0 +1,16 @@
+entry: a
+
+steps:
+  a:
+    type: shell
+    commands:
+      - npm test
+    next: b
+    max_visits: 5
+
+  b:
+    type: shell
+    commands:
+      - npm test
+    next: a
+    max_visits: 5
