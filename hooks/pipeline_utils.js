@@ -266,18 +266,24 @@ function loadActivePipelineContext(data) {
   if (!state || state.mode !== 'pipeline') {
     return null;
   }
-  const pipelinePath = path.join(
-    PROJECT_ROOT,
-    state.pipeline || '.pipeline/pipeline.yaml'
-  );
+  const pipelineRef = state.pipeline || '.pipeline/pipeline.yaml';
+  const pipelinePath = path.join(PROJECT_ROOT, pipelineRef);
   if (!fs.existsSync(pipelinePath)) {
-    return null;
+    return {
+      sessionId,
+      state,
+      error: { type: 'missing_file', path: pipelineRef },
+    };
   }
   let config;
   try {
     config = parseYAML(fs.readFileSync(pipelinePath, 'utf8'));
   } catch {
-    return null;
+    return {
+      sessionId,
+      state,
+      error: { type: 'parse_error', path: pipelineRef },
+    };
   }
   return { sessionId, state, config };
 }

@@ -267,14 +267,19 @@ describe('check_pipeline.js', () => {
     expect(payload.systemMessage).not.toContain('python3');
   });
 
-  it('exits 0 silently when pipeline file does not exist', () => {
+  it('blocks with a visible error and halts the pipeline when the pipeline file does not exist', () => {
     setSessionState(
       SESSION_ID,
       createSessionState({ pipeline: 'nonexistent/pipeline.yaml' })
     );
-    const result = runHook(SESSION_ID);
-    expect(result.status).toBe(0);
-    expect(result.stdout).toBe('');
+    const payload = runHookAndBlock(SESSION_ID);
+    expect(payload.reason).toContain('nonexistent/pipeline.yaml');
+    expect(payload.reason).toContain('/pipeline:run');
+    expect(payload.systemMessage).toContain('❌');
+    expect(payload.systemMessage).toContain('nonexistent/pipeline.yaml');
+
+    const state = readSessionState(SESSION_ID);
+    expect(state.mode).toBe('free');
   });
 
   it('exits 0 silently when current step is type=interview', () => {
