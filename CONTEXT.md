@@ -85,6 +85,10 @@ A step with `type: interview` used to gather requirements through multi-turn con
 
 The action of finalizing gathered requirements in an interview step, making them available to subsequent steps via `{{user_requirements}}`.
 
+### Demo Recording
+
+The `record_demo` step (an ordinary agent step, not a fourth step type) that closes out `.pipeline/pipeline.yaml`. Claude acts as a manual tester, exercising the feature end-to-end in the terminal, capturing the session with `asciinema` and converting it to a GIF with `agg`, then publishing the GIF via a secret gist (`gh gist create`) and embedding its raw URL in the PR description (`gh pr edit --body`). The GIF is never committed to the repository. See `docs/adr/0008-terminal-demo-recording-via-asciinema-agg-gist.md`.
+
 ### Version
 
 The semantic version string (`major.minor.patch`) recorded in `package.json`, `.claude-plugin/plugin.json`, and `.claude-plugin/marketplace.json` (`plugins[0].version`). All three files must always hold the same value. The `bump_version` pipeline step is responsible for choosing and applying the correct bump level based on the nature of the changes in the current branch. It compares `package.json`'s version against `origin/main`'s: if the value is unchanged, the branch hasn't been bumped yet and the step proceeds; if it already differs, a prior pipeline run on this branch already bumped it and the step skips — ensuring at most one version bump per branch regardless of how many times the pipeline is run.

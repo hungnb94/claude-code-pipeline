@@ -129,6 +129,7 @@ steps:
 ```
 
 While an interview step is active:
+
 - The pipeline pauses and Claude converses naturally with the user (no auto-continuation between turns).
 - `Edit`, `Write`, and `MultiEdit` tools are blocked until requirements are confirmed.
 

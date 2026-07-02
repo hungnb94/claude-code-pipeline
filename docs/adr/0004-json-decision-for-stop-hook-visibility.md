@@ -14,7 +14,11 @@ The Stop-hook-specific JSON output protocol supports combining `decision: "block
 `hooks/check_pipeline.js` now writes a single JSON object to stdout and exits 0:
 
 ```json
-{ "decision": "block", "reason": "<full step output, same content Claude received before>", "systemMessage": "<step header + prompt/commands, no state-update code>" }
+{
+  "decision": "block",
+  "reason": "<full step output, same content Claude received before>",
+  "systemMessage": "<step header + prompt/commands, no state-update code>"
+}
 ```
 
 `reason` is unchanged from the old stderr payload (`buildStepOutput`), so Claude's behavior is unaffected. `systemMessage` is a new, human-facing rendering built by `buildStepDescription()` in `hooks/pipeline_utils.js` — it omits the Python state-update snippet (`buildAgentUpdateBlock`/`buildShellUpdateBlock`), which is plumbing for Claude, not something a human needs to read. `buildStepOutput` now composes `buildStepDescription()` + the update block, so the two channels share formatting code instead of duplicating it.

@@ -27,7 +27,10 @@ function block(reason) {
     }
   } else if (toolName === 'Bash') {
     const command = toolInput.command || '';
-    if (PROTECTED_PATTERNS.some((p) => command.includes(p)) && !ALLOWED_INVOCATION.test(command)) {
+    if (
+      PROTECTED_PATTERNS.some((p) => command.includes(p)) &&
+      !ALLOWED_INVOCATION.test(command)
+    ) {
       block(
         'This is a best-effort check, not a sandbox, but direct manipulation of pipeline state files via Bash is not allowed. Use hooks/pipeline_advance.js instead.'
       );

@@ -32,9 +32,12 @@ function fail(message) {
 }
 
 function main() {
-  const { session, step: stepArg, output, requirements } = parseArgs(
-    process.argv.slice(2)
-  );
+  const {
+    session,
+    step: stepArg,
+    output,
+    requirements,
+  } = parseArgs(process.argv.slice(2));
 
   if (!session || !stepArg) {
     fail('--session and --step are required');
@@ -83,10 +86,16 @@ function main() {
   }
 
   if (step.type === 'interview' && (requirements === null || output !== null)) {
-    fail("step '" + stepArg + "' is type=interview; pass --requirements, not --output");
+    fail(
+      "step '" +
+        stepArg +
+        "' is type=interview; pass --requirements, not --output"
+    );
   }
   if (step.type === 'agent' && (output === null || requirements !== null)) {
-    fail("step '" + stepArg + "' is type=agent; pass --output, not --requirements");
+    fail(
+      "step '" + stepArg + "' is type=agent; pass --output, not --requirements"
+    );
   }
 
   state.completed_steps = state.completed_steps || [];

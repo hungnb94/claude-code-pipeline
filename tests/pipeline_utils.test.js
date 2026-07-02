@@ -144,10 +144,7 @@ describe('buildAdvanceInstruction', () => {
 
 describe('runShellStep', () => {
   it('returns ok=true and captures stdout when all commands succeed', () => {
-    const result = runShellStep(
-      { commands: ['echo hello'] },
-      process.cwd()
-    );
+    const result = runShellStep({ commands: ['echo hello'] }, process.cwd());
     expect(result.ok).toBe(true);
     expect(result.output).toContain('hello');
   });

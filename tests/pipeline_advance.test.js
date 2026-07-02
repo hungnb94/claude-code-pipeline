@@ -35,9 +35,12 @@ describe('pipeline_advance.js', () => {
     setSessionState(SESSION_ID, initial);
 
     const result = runAdvance([
-      '--session', SESSION_ID,
-      '--step', 'review_plan',
-      '--output', 'done',
+      '--session',
+      SESSION_ID,
+      '--step',
+      'review_plan',
+      '--output',
+      'done',
     ]);
 
     expect(result.status).toBe(1);
@@ -52,9 +55,12 @@ describe('pipeline_advance.js', () => {
     setSessionState(SESSION_ID, initial);
 
     const result = runAdvance([
-      '--session', SESSION_ID,
-      '--step', 'verify',
-      '--output', 'tests passed',
+      '--session',
+      SESSION_ID,
+      '--step',
+      'verify',
+      '--output',
+      'tests passed',
     ]);
 
     expect(result.status).toBe(1);
@@ -68,12 +74,16 @@ describe('pipeline_advance.js', () => {
     setSessionState(SESSION_ID, createSessionState({ current_step: 'plan' }));
 
     const result = runAdvance([
-      '--session', SESSION_ID,
-      '--step', 'plan',
-      '--output', 'wrote the plan',
+      '--session',
+      SESSION_ID,
+      '--step',
+      'plan',
+      '--output',
+      'wrote the plan',
       // Extra/unsupported flags must have no effect on routing — there is no
       // way to pass a custom "next" destination.
-      '--next', 'bump_version',
+      '--next',
+      'bump_version',
     ]);
 
     expect(result.status).toBe(0);
@@ -89,9 +99,12 @@ describe('pipeline_advance.js', () => {
     setSessionState(SESSION_ID, initial);
 
     const result = runAdvance([
-      '--session', SESSION_ID,
-      '--step', 'plan',
-      '--requirements', 'some requirements',
+      '--session',
+      SESSION_ID,
+      '--step',
+      'plan',
+      '--requirements',
+      'some requirements',
     ]);
 
     expect(result.status).toBe(1);
@@ -100,20 +113,28 @@ describe('pipeline_advance.js', () => {
   });
 
   it('interview step sets user_requirements and requirements_locked, and advances via step.next', () => {
-    setSessionState(SESSION_ID, createSessionState({
-      pipeline: 'tests/fixtures/interview-entry.yaml',
-      current_step: 'gather_requirements',
-    }));
+    setSessionState(
+      SESSION_ID,
+      createSessionState({
+        pipeline: 'tests/fixtures/interview-entry.yaml',
+        current_step: 'gather_requirements',
+      })
+    );
 
     const result = runAdvance([
-      '--session', SESSION_ID,
-      '--step', 'gather_requirements',
-      '--requirements', 'Build a todo app with postgres',
+      '--session',
+      SESSION_ID,
+      '--step',
+      'gather_requirements',
+      '--requirements',
+      'Build a todo app with postgres',
     ]);
 
     expect(result.status).toBe(0);
     const state = readSessionState(SESSION_ID);
-    expect(state.shared_state.user_requirements).toBe('Build a todo app with postgres');
+    expect(state.shared_state.user_requirements).toBe(
+      'Build a todo app with postgres'
+    );
     expect(state.shared_state.requirements_locked).toBe('true');
     expect(state.current_step).toBe('plan');
     expect(state.completed_steps).toContain('gather_requirements');
@@ -127,9 +148,12 @@ describe('pipeline_advance.js', () => {
     setSessionState(SESSION_ID, initial);
 
     const result = runAdvance([
-      '--session', SESSION_ID,
-      '--step', 'gather_requirements',
-      '--output', 'some output',
+      '--session',
+      SESSION_ID,
+      '--step',
+      'gather_requirements',
+      '--output',
+      'some output',
     ]);
 
     expect(result.status).toBe(1);
@@ -138,15 +162,21 @@ describe('pipeline_advance.js', () => {
   });
 
   it('sets mode=free when the completed step has no next', () => {
-    setSessionState(SESSION_ID, createSessionState({
-      pipeline: 'tests/fixtures/requirements-entry.yaml',
-      current_step: 'start',
-    }));
+    setSessionState(
+      SESSION_ID,
+      createSessionState({
+        pipeline: 'tests/fixtures/requirements-entry.yaml',
+        current_step: 'start',
+      })
+    );
 
     const result = runAdvance([
-      '--session', SESSION_ID,
-      '--step', 'start',
-      '--output', 'done',
+      '--session',
+      SESSION_ID,
+      '--step',
+      'start',
+      '--output',
+      'done',
     ]);
 
     expect(result.status).toBe(0);
@@ -156,9 +186,12 @@ describe('pipeline_advance.js', () => {
 
   it('rejects when no active pipeline session exists for the session id', () => {
     const result = runAdvance([
-      '--session', SESSION_ID,
-      '--step', 'plan',
-      '--output', 'done',
+      '--session',
+      SESSION_ID,
+      '--step',
+      'plan',
+      '--output',
+      'done',
     ]);
 
     expect(result.status).toBe(1);

@@ -1,10 +1,19 @@
-const { spawnSync, randomUUID, PROJECT_ROOT, cleanupSession } = require('./helpers');
+const {
+  spawnSync,
+  randomUUID,
+  PROJECT_ROOT,
+  cleanupSession,
+} = require('./helpers');
 const path = require('path');
 
 const HOOK = path.join(PROJECT_ROOT, 'hooks/guard_state.js');
 
 function runGuard(sessionId, toolName, toolInput) {
-  const input = JSON.stringify({ session_id: sessionId, tool_name: toolName, tool_input: toolInput });
+  const input = JSON.stringify({
+    session_id: sessionId,
+    tool_name: toolName,
+    tool_input: toolInput,
+  });
   return spawnSync('node', [HOOK], {
     input,
     encoding: 'utf8',
@@ -31,11 +40,15 @@ describe('guard_state.js', () => {
   });
 
   it('blocks Edit targeting .pipeline/sessions/<id>.json even when no pipeline is active', () => {
-    expectBlocked(SESSION_ID, 'Edit', { file_path: `.pipeline/sessions/${SESSION_ID}.json` });
+    expectBlocked(SESSION_ID, 'Edit', {
+      file_path: `.pipeline/sessions/${SESSION_ID}.json`,
+    });
   });
 
   it('blocks Write targeting .pipeline/sessions/<id>.json', () => {
-    expectBlocked(SESSION_ID, 'Write', { file_path: `.pipeline/sessions/${SESSION_ID}.json` });
+    expectBlocked(SESSION_ID, 'Write', {
+      file_path: `.pipeline/sessions/${SESSION_ID}.json`,
+    });
   });
 
   it('blocks Edit targeting .pipeline/state.json', () => {
@@ -43,17 +56,23 @@ describe('guard_state.js', () => {
   });
 
   it('allows Edit/Write targeting an unrelated file', () => {
-    const editResult = runGuard(SESSION_ID, 'Edit', { file_path: 'src/foo.js' });
+    const editResult = runGuard(SESSION_ID, 'Edit', {
+      file_path: 'src/foo.js',
+    });
     expect(editResult.status).toBe(0);
     expect(editResult.stdout).toBe('');
 
-    const writeResult = runGuard(SESSION_ID, 'Write', { file_path: 'src/foo.js' });
+    const writeResult = runGuard(SESSION_ID, 'Write', {
+      file_path: 'src/foo.js',
+    });
     expect(writeResult.status).toBe(0);
     expect(writeResult.stdout).toBe('');
   });
 
   it('blocks Bash referencing .pipeline/sessions/ without invoking pipeline_advance.js', () => {
-    expectBlocked(SESSION_ID, 'Bash', { command: `cat .pipeline/sessions/${SESSION_ID}.json` });
+    expectBlocked(SESSION_ID, 'Bash', {
+      command: `cat .pipeline/sessions/${SESSION_ID}.json`,
+    });
   });
 
   it('allows Bash referencing the protected path when it properly invokes pipeline_advance.js', () => {

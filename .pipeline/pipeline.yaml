@@ -127,3 +127,32 @@ steps:
     type: agent
     prompt: |
       Review pull request and auto fix found issues
+    next: record_demo
+
+  record_demo:
+    type: agent
+    prompt: |
+      Act as a manual tester. Based on {{user_requirements}} and the changes made in
+      this pipeline run, exercise the actual feature end-to-end in the terminal (like
+      Playwright does for a browser, but for CLI apps) and record proof it works.
+
+      1. Check `command -v asciinema` and `command -v agg`. If either is missing, print
+         install instructions (`brew install asciinema`, `brew install agg`) and STOP -
+         do not run pipeline_advance.js.
+      2. Decide what terminal actions demonstrate the feature working.
+      3. In a scratch dir (mktemp -d, outside the repo), record a real, live session:
+         `asciinema rec session.cast` while performing those actions.
+      4. Convert: `agg session.cast session.gif`.
+      5. Publish: `gh gist create session.gif` may fail with "Resource not
+         accessible" if `gh` is authenticated with a fine-grained PAT (GitHub
+         blocks the Gist API for fine-grained tokens entirely - not a scope
+         issue). If it fails, fall back to a GitHub Release asset instead:
+         `gh release create demo-recordings --notes "Container release for
+         record_demo GIFs" --target main` (skip if it already exists), then
+         `gh release upload demo-recordings <name>.gif`, and use the printed
+         `.../releases/download/demo-recordings/<name>.gif` URL in place of
+         the gist raw URL below.
+      6. Fetch the current PR body (`gh pr view --json body -q .body`), append a
+         "## Demo" section with `![demo](<raw_url>)`, write back via `gh pr edit --body`.
+      7. Clean up the scratch dir.
+      8. Only then call pipeline_advance.js.

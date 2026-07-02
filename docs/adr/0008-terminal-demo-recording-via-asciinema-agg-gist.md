@@ -1,0 +1,7 @@
+# Terminal demo recording via asciinema + agg, published as gist or Release-asset GIF
+
+The `record_demo` step needs to prove a PR works by exercising the feature end-to-end in the terminal (a terminal analogue of Playwright) and attaching visual proof to the PR.
+
+GitHub has no public API for the drag-and-drop "attach image to PR comment" flow, so the recording can't be attached the way a human would in the web UI. Decision: capture the session with `asciinema rec` (`.cast`), convert it to a GIF with `agg`, then publish the GIF and embed its raw URL as a markdown image in the PR description with `gh pr edit --body`. This keeps the recording viewable inline on the PR without committing binary GIF files into the repository, at the cost of requiring `asciinema` and `agg` as external system binaries. If either binary is missing, the step fails with install instructions rather than auto-installing. Repo-committed GIFs were considered and rejected to avoid unbounded repo growth over time.
+
+Publishing was originally designed around `gh gist create`, but that call fails with `403: Resource not accessible` when `gh` is authenticated with a fine-grained personal access token — GitHub's Gist API rejects fine-grained PATs outright, not a fixable scope gap. The step falls back to a GitHub Release asset instead: a standing `demo-recordings` release (not a real version tag) holds each run's GIF via `gh release upload`, giving a stable public download URL usable the same way as a gist raw URL, without requiring `gist` scope or a classic PAT.

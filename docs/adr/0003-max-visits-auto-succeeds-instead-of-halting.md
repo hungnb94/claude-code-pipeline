@@ -11,7 +11,7 @@ Previously, when a step's `visit_counts` reached its `max_visits`, `hooks/check_
 
 When `visits >= max_visits`, the step is treated as if it succeeded: it's appended to `completed_steps` and the pipeline advances to `step.next` (the same field used for the success path — `next_fail` is never consulted here, since this isn't a failure route). If the step has no `next`, the pipeline ends (`mode: 'free'`), matching how any other step with no `next` ends the pipeline. Both `reason` (to Claude) and the visible message are prefixed with a warning naming which step(s) were auto-skipped.
 
-If advancing lands on another step that is *also* already maxed out, the same logic repeats (a loop in the hook). A `seen` set guards against two or more maxed-out steps forming a cycle via `next` — if a step recurs within the same hook invocation, the pipeline halts with a clear cycle error instead of looping forever inside the Node process.
+If advancing lands on another step that is _also_ already maxed out, the same logic repeats (a loop in the hook). A `seen` set guards against two or more maxed-out steps forming a cycle via `next` — if a step recurs within the same hook invocation, the pipeline halts with a clear cycle error instead of looping forever inside the Node process.
 
 ## Consequences
 

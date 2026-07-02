@@ -162,7 +162,10 @@ function getSessionState(sessionId) {
 
 function setSessionState(sessionId, sessionState) {
   fs.mkdirSync(SESSIONS_DIR, { recursive: true });
-  fs.writeFileSync(sessionFilePath(sessionId), JSON.stringify(sessionState, null, 2));
+  fs.writeFileSync(
+    sessionFilePath(sessionId),
+    JSON.stringify(sessionState, null, 2)
+  );
 }
 
 function buildAdvanceInstruction(sessionId, stepName, step) {
@@ -263,7 +266,10 @@ function loadActivePipelineContext(data) {
   if (!state || state.mode !== 'pipeline') {
     return null;
   }
-  const pipelinePath = path.join(PROJECT_ROOT, state.pipeline || '.pipeline/pipeline.yaml');
+  const pipelinePath = path.join(
+    PROJECT_ROOT,
+    state.pipeline || '.pipeline/pipeline.yaml'
+  );
   if (!fs.existsSync(pipelinePath)) {
     return null;
   }

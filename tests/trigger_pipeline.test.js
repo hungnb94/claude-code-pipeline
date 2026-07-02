@@ -2,11 +2,7 @@ const { spawnSync } = require('child_process');
 const { randomUUID } = require('crypto');
 const path = require('path');
 
-const {
-  PROJECT_ROOT,
-  readSessionState,
-  cleanupSession,
-} = require('./helpers');
+const { PROJECT_ROOT, readSessionState, cleanupSession } = require('./helpers');
 
 const HOOK = path.join(PROJECT_ROOT, 'hooks/trigger_pipeline.js');
 

@@ -52,7 +52,10 @@ const {
     }
     visitedThisInvocation.add(current);
 
-    if (step.max_visits && (state.visit_counts[current] || 0) >= step.max_visits) {
+    if (
+      step.max_visits &&
+      (state.visit_counts[current] || 0) >= step.max_visits
+    ) {
       if (seen.has(current)) {
         state.mode = 'free';
         setSessionState(sessionId, state);
