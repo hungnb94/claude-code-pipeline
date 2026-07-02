@@ -48,7 +48,7 @@ The mechanism by which subsequent steps are driven after step 1. The `Stop` hook
 
 ### Shell Step Execution
 
-Shell steps run inside the `Stop` hook (`check_pipeline.js`) itself via `child_process`, not as a Bash action Claude takes. The hook captures stdout/stderr into `shared_state[<step_name>_output]` and picks `next` or `next_fail` from the real exit code, chaining through consecutive shell steps in one hook invocation until it reaches a non-shell step or a failure. Claude is never asked to run or self-report these commands. See `docs/adr/0007-hook-driven-state-advancement.md`.
+Shell steps run inside the `Stop` hook (`check_pipeline.js`) itself via `child_process`, not as a Bash action Claude takes. The hook captures stdout/stderr into `shared_state[<step_name>_output]` and picks `next` or `next_fail` from the real exit code, chaining through consecutive shell steps in one hook invocation until it reaches a non-shell step, a failure, or a cycle. A per-invocation guard halts the pipeline with a cycle error if any step repeats before that (independent of, and in addition to, the `Max Visits` guard) — this catches shell-step loops that have no `max_visits` set, which would otherwise hang the hook. Claude is never asked to run or self-report these commands. See `docs/adr/0007-hook-driven-state-advancement.md`.
 
 ### State Guard
 

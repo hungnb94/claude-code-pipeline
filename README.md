@@ -132,7 +132,7 @@ While an interview step is active:
 - The pipeline pauses and Claude converses naturally with the user (no auto-continuation between turns).
 - `Edit`, `Write`, and `MultiEdit` tools are blocked until requirements are confirmed.
 
-When Claude has gathered enough information, it runs `hooks/pipeline_advance.js --step gather_requirements --requirements "<text>"` (the command is provided in the step output) to lock the requirements and advance the pipeline. Locked requirements are stored as `{{user_requirements}}` in shared state.
+When Claude has gathered enough information, it runs `hooks/pipeline_advance.js --session <id> --step gather_requirements --requirements "<text>"` (the command is provided in the step output) to lock the requirements and advance the pipeline. Locked requirements are stored as `{{user_requirements}}` in shared state.
 
 ### Shared state
 

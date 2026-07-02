@@ -14,7 +14,7 @@ An alternative — leaving the trust model as-is and only translating the interv
 Two mechanisms replace agent-composed state mutation:
 
 1. **Shell steps run inside the `Stop` hook itself.** `check_pipeline.js` executes `step.commands` via `child_process` when it encounters a shell step, captures stdout/stderr into `shared_state[<step>_output]`, and picks `next` or `next_fail` from the real exit code — chained through consecutive shell steps in one hook invocation until a non-shell step or a failure is reached. Claude is never asked to run or report on these commands.
-2. **Agent/interview steps advance via a fixed CLI**, `hooks/pipeline_advance.js`, replacing the freeform snippet. Claude supplies only `--step <name>` (rejected if it doesn't match `state.current_step`) and `--output <text>` (agent) or `--requirements <text>` (interview entry step). The script looks up `next` from `pipeline.yaml` itself — Claude cannot specify a destination step.
+2. **Agent/interview steps advance via a fixed CLI**, `hooks/pipeline_advance.js`, replacing the freeform snippet. Claude supplies `--session <id>`, `--step <name>` (rejected if it doesn't match `state.current_step`), and `--output <text>` (agent) or `--requirements <text>` (interview entry step). The script looks up `next` from `pipeline.yaml` itself — Claude cannot specify a destination step.
 
 A new PreToolUse guard (`guard_state.js`) denies `Edit`/`Write`/`MultiEdit` on `.pipeline/sessions/**/*.json` and `.pipeline/state.json` unconditionally, and denies `Bash` commands that reference those paths unless the command also references `pipeline_advance.js`.
 

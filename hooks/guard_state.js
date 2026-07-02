@@ -1,9 +1,6 @@
 #!/usr/bin/env node
 
-const {
-  loadActivePipelineContext,
-  parseStdinJSON,
-} = require('./pipeline_utils.js');
+const { parseStdinJSON } = require('./pipeline_utils.js');
 
 const PROTECTED_PATTERNS = ['.pipeline/sessions/', '.pipeline/state.json'];
 const ALLOWED_INVOCATION = /\bnode\s+\S*pipeline_advance\.js\b/;
@@ -16,11 +13,8 @@ function block(reason) {
 (async () => {
   const data = await parseStdinJSON();
 
-  const ctx = loadActivePipelineContext(data);
-  if (!ctx) {
-    process.exit(0);
-  }
-
+  // Unconditional: these files must never be hand-edited, regardless of
+  // whether a pipeline happens to be active right now.
   const toolName = data.tool_name || '';
   const toolInput = data.tool_input || {};
 
