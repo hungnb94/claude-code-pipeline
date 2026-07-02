@@ -6,9 +6,8 @@ process.env.CLAUDE_PROJECT_DIR = path.resolve(__dirname, '..');
 const {
   parseYAML,
   render,
-  buildAgentUpdateBlock,
-  buildShellUpdateBlock,
-  buildInterviewUpdateBlock,
+  buildAdvanceInstruction,
+  runShellStep,
   buildStepOutput,
 } = require('../hooks/pipeline_utils.js');
 
@@ -108,43 +107,59 @@ describe('render', () => {
   });
 });
 
-describe('buildAgentUpdateBlock', () => {
-  it('includes the session ID in the python3 command', () => {
-    const block = buildAgentUpdateBlock('my-session-id', 'plan', 'review_plan');
-    expect(block).toContain('my-session-id');
-    expect(block).toContain('python3');
+describe('buildAdvanceInstruction', () => {
+  it('renders a runnable pipeline_advance.js command with session and step for agent steps', () => {
+    const instruction = buildAdvanceInstruction('my-session-id', 'plan', {
+      type: 'agent',
+      next: 'review_plan',
+    });
+    expect(instruction).toContain('pipeline_advance.js');
+    expect(instruction).toContain('--session my-session-id');
+    expect(instruction).toContain('--step plan');
+    expect(instruction).toContain('--output');
+    expect(instruction).not.toContain('--requirements');
+    expect(instruction).not.toContain('python3');
   });
 
-  it('sets current_step to next when next is provided', () => {
-    const block = buildAgentUpdateBlock('sid', 'plan', 'review_plan');
-    expect(block).toContain('current_step');
-    expect(block).toContain('review_plan');
+  it('renders a --requirements flag (not --output) for interview steps', () => {
+    const instruction = buildAdvanceInstruction('sid', 'gather', {
+      type: 'interview',
+      next: 'plan',
+    });
+    expect(instruction).toContain('--requirements');
+    expect(instruction).not.toContain('--output');
   });
 
-  it("sets mode to 'free' when next is empty (terminal step)", () => {
-    const block = buildAgentUpdateBlock('sid', 'done', '');
-    expect(block).toContain('mode');
-    expect(block).toContain('free');
-  });
-
-  it('escapes single quotes in session ID', () => {
-    const block = buildAgentUpdateBlock("it's-a-session", 'plan', 'next');
-    expect(block).toContain("\\'s-a-session");
+  it('renders an absolute, directly-runnable path to pipeline_advance.js', () => {
+    const instruction = buildAdvanceInstruction('sid', 'plan', {
+      type: 'agent',
+      next: 'review_plan',
+    });
+    const path = require('path');
+    expect(instruction).toContain(
+      path.join(path.resolve(__dirname, '..'), 'hooks/pipeline_advance.js')
+    );
   });
 });
 
-describe('buildShellUpdateBlock', () => {
-  it('includes success and failure python3 blocks', () => {
-    const block = buildShellUpdateBlock('sid', 'verify', 'review', 'fix_code');
-    expect(block).toContain('If ALL commands exit 0');
-    expect(block).toContain('If ANY command fails');
-    expect(block).toContain('review');
-    expect(block).toContain('fix_code');
+describe('runShellStep', () => {
+  it('returns ok=true and captures stdout when all commands succeed', () => {
+    const result = runShellStep(
+      { commands: ['echo hello'] },
+      process.cwd()
+    );
+    expect(result.ok).toBe(true);
+    expect(result.output).toContain('hello');
   });
 
-  it("sets mode='free' on success when next is empty", () => {
-    const block = buildShellUpdateBlock('sid', 'verify', '', 'fix_code');
-    expect(block).toContain('free');
+  it('returns ok=false and stops at the first failing command', () => {
+    const result = runShellStep(
+      { commands: ['echo first', 'exit 1', 'echo never'] },
+      process.cwd()
+    );
+    expect(result.ok).toBe(false);
+    expect(result.output).toContain('first');
+    expect(result.output).not.toContain('never');
   });
 });
 
@@ -218,15 +233,6 @@ describe('default pipeline routing', () => {
   });
 });
 
-describe('buildInterviewUpdateBlock', () => {
-  it('sets requirements_locked', () => {
-    const result = buildInterviewUpdateBlock('sess1', 'gather', 'plan');
-    expect(result).toContain('requirements_locked');
-    expect(result).toContain("'true'");
-    expect(result).toContain('REPLACE_WITH_GATHERED_REQUIREMENTS');
-  });
-});
-
 describe('buildStepOutput', () => {
   it('dispatches type=interview without Execute the following prompt framing', () => {
     const result = buildStepOutput(
@@ -237,5 +243,17 @@ describe('buildStepOutput', () => {
     );
     expect(result).toContain('(type=interview)');
     expect(result).not.toContain('Execute the following prompt');
+    expect(result).toContain('--requirements');
+  });
+
+  it('dispatches type=shell with only the description — no advance instruction', () => {
+    const result = buildStepOutput(
+      'sess1',
+      'verify',
+      { type: 'shell', commands: ['npm test'], next: 'lint' },
+      {}
+    );
+    expect(result).toContain('(type=shell)');
+    expect(result).not.toContain('pipeline_advance.js');
   });
 });

@@ -1,0 +1,14 @@
+entry: x
+
+steps:
+  x:
+    type: shell
+    commands:
+      - exit 0
+    next: y
+
+  y:
+    type: shell
+    commands:
+      - exit 0
+    next: x

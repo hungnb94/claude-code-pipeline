@@ -30,6 +30,16 @@ function runHookAndBlock(sessionId) {
   return payload;
 }
 
+function expectCycleHalt(sessionId, overrides) {
+  setSessionState(sessionId, createSessionState(overrides));
+  const payload = runHookAndBlock(sessionId);
+  expect(payload.reason).toContain('cycle detected');
+  expect(payload.systemMessage).toContain('cycle detected');
+
+  const state = readSessionState(sessionId);
+  expect(state.mode).toBe('free');
+}
+
 describe('check_pipeline.js', () => {
   let SESSION_ID;
 
@@ -68,32 +78,71 @@ describe('check_pipeline.js', () => {
     );
   });
 
-  it('blocks stop and shows shell commands when current step is type=shell', () => {
+  it('executes a shell step via the hook and advances via the real exit code, without instructing Claude to run it', () => {
     setSessionState(SESSION_ID, createSessionState({
-      current_step: 'verify',
-      completed_steps: ['plan', 'review_plan', 'implementation', 'docs'],
-      visit_counts: { plan: 1, review_plan: 1, implementation: 1, docs: 1 },
+      pipeline: 'tests/fixtures/shell-steps.yaml',
+      current_step: 'shell_fail',
     }));
     const payload = runHookAndBlock(SESSION_ID);
-    expect(payload.reason).toContain("Pipeline step: 'verify' (type=shell)");
-    expect(payload.reason).toContain('npm test');
-    expect(payload.systemMessage).toContain('npm test');
+    // Landed on the failure path's agent step because the shell command exited non-zero.
+    expect(payload.reason).toContain("Pipeline step: 'agent_after_fail' (type=agent)");
+    // Claude is never shown the shell commands or asked to run/self-report them.
+    expect(payload.reason).not.toContain('Run these commands in sequence');
+    expect(payload.systemMessage).not.toContain('Run these commands in sequence');
+
+    const state = readSessionState(SESSION_ID);
+    expect(state.current_step).toBe('agent_after_fail');
+    expect(state.completed_steps).toContain('shell_fail');
+  });
+
+  it('chains two consecutive shell steps in one invocation and lands on the agent step prompt', () => {
+    setSessionState(SESSION_ID, createSessionState({
+      pipeline: 'tests/fixtures/shell-steps.yaml',
+      current_step: 'shell_a',
+    }));
+    const payload = runHookAndBlock(SESSION_ID);
+    expect(payload.reason).toContain("Pipeline step: 'agent_after' (type=agent)");
+
+    const state = readSessionState(SESSION_ID);
+    expect(state.current_step).toBe('agent_after');
+    expect(state.completed_steps).toEqual(
+      expect.arrayContaining(['shell_a', 'shell_b'])
+    );
+  });
+
+  it('captures shell step output into shared_state[<step>_output]', () => {
+    setSessionState(SESSION_ID, createSessionState({
+      pipeline: 'tests/fixtures/shell-steps.yaml',
+      current_step: 'shell_fail',
+    }));
+    runHookAndBlock(SESSION_ID);
+
+    const state = readSessionState(SESSION_ID);
+    expect(state.shared_state.shell_fail_output).toContain('boom');
+  });
+
+  it('halts with a cycle error when shell steps loop with no max_visits set', () => {
+    expectCycleHalt(SESSION_ID, {
+      pipeline: 'tests/fixtures/shell-cycle-no-max-visits.yaml',
+      current_step: 'x',
+    });
   });
 
   it('auto-marks step as succeeded and advances to next when max_visits is reached', () => {
     setSessionState(SESSION_ID, createSessionState({
-      current_step: 'verify',
-      visit_counts: { verify: 9 },
+      pipeline: 'tests/fixtures/max-visits-skip-to-agent.yaml',
+      current_step: 'verify_shell',
+      visit_counts: { verify_shell: 9 },
     }));
     const payload = runHookAndBlock(SESSION_ID);
     expect(payload.reason).toContain('max_visits');
-    expect(payload.reason).toContain("advancing to 'lint'");
-    expect(payload.reason).toContain("Pipeline step: 'lint' (type=shell)");
-    expect(payload.systemMessage).toContain("advancing to 'lint'");
+    expect(payload.reason).toContain("advancing to 'lint_step'");
+    expect(payload.reason).toContain("Pipeline step: 'lint_step' (type=agent)");
+    expect(payload.systemMessage).toContain("advancing to 'lint_step'");
 
     const state = readSessionState(SESSION_ID);
-    expect(state.current_step).toBe('lint');
-    expect(state.completed_steps).toContain('verify');
+    expect(state.current_step).toBe('lint_step');
+    expect(state.completed_steps).toContain('verify_shell');
   });
 
   it('ends the pipeline (mode=free) when a maxed-out step has no next', () => {
@@ -112,17 +161,11 @@ describe('check_pipeline.js', () => {
   });
 
   it('halts with a cycle error instead of hanging when maxed-out steps point at each other', () => {
-    setSessionState(SESSION_ID, createSessionState({
+    expectCycleHalt(SESSION_ID, {
       pipeline: 'tests/fixtures/max-visits-cycle.yaml',
       current_step: 'a',
       visit_counts: { a: 5, b: 5 },
-    }));
-    const payload = runHookAndBlock(SESSION_ID);
-    expect(payload.reason).toContain('cycle detected');
-    expect(payload.systemMessage).toContain('cycle detected');
-
-    const state = readSessionState(SESSION_ID);
-    expect(state.mode).toBe('free');
+    });
   });
 
   it('exits 0 and sets mode=free when current step has terminal:true', () => {
@@ -164,11 +207,26 @@ describe('check_pipeline.js', () => {
     expect(payload.reason).toContain('Write a step-by-step implementation plan for the following requirements:');
   });
 
-  it('writes full shell step output to reason', () => {
-    setSessionState(SESSION_ID, createSessionState({ current_step: 'verify' }));
+  it('shows the advance-script instruction (not a python block) for agent steps, and nothing at all for shell steps', () => {
+    setSessionState(SESSION_ID, createSessionState());
     const payload = runHookAndBlock(SESSION_ID);
-    expect(payload.reason).toContain('Run these commands in sequence:');
-    expect(payload.reason).toContain('npm test');
+    expect(payload.reason).not.toContain('python3');
+    expect(payload.reason).toContain('pipeline_advance.js');
+    expect(payload.reason).toContain('--step plan');
+    expect(payload.reason).toContain('--output');
+
+    setSessionState(SESSION_ID, createSessionState({
+      pipeline: 'tests/fixtures/shell-steps.yaml',
+      current_step: 'shell_a',
+    }));
+    const shellPayload = runHookAndBlock(SESSION_ID);
+    // Shell steps chain straight through to the next agent step — nothing
+    // copy-paste-and-tamperable is ever shown for the shell steps themselves,
+    // even though the agent step reached afterward still shows its own
+    // advance instruction.
+    expect(shellPayload.reason).not.toContain('Run these commands in sequence');
+    expect(shellPayload.reason).not.toContain('exit 0');
+    expect(shellPayload.reason).not.toContain('python3');
   });
 
   it('does not leak the state-update python block into systemMessage', () => {

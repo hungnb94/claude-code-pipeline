@@ -8,8 +8,10 @@ Key paths:
 
 - `skills/run/` — the `/pipeline:run` skill entry point (`skills/run/SKILL.md`)
 - `hooks/trigger_pipeline.js` — `UserPromptSubmit` hook; initializes pipeline state and injects step 1
-- `hooks/check_pipeline.js` — `Stop` hook; drives continuation after each step
-- `hooks/pipeline_utils.js` — shared utilities for both hooks
+- `hooks/check_pipeline.js` — `Stop` hook; drives continuation after each step, executes shell steps directly
+- `hooks/pipeline_advance.js` — fixed CLI Claude runs to advance agent/interview steps (see CONTEXT.md: Advance Script)
+- `hooks/guard_state.js` — `PreToolUse` hook blocking direct tampering with pipeline state files (see CONTEXT.md: State Guard)
+- `hooks/pipeline_utils.js` — shared utilities used across hooks
 - `tests/` — Jest test suite (`npm test`)
 - `.claude-plugin/plugin.json` — plugin manifest (name, version)
 - `package.json` — also holds the version string

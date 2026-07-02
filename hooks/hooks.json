@@ -8,6 +8,11 @@
             "type": "command",
             "command": "node",
             "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/guard_interview.js"]
+          },
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/guard_state.js"]
           }
         ]
       }
@@ -29,7 +34,8 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/check_pipeline.js"]
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/check_pipeline.js"],
+            "timeout": 600
           }
         ]
       }

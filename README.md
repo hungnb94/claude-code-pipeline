@@ -100,7 +100,7 @@ step_name:
 
 ### Shell step
 
-One or more shell commands run via Bash. Pass/fail determined by exit code.
+One or more shell commands, run directly by the `Stop` hook (not by Claude). Pass/fail is determined by the real exit code — Claude never runs or self-reports these commands.
 
 ```yaml
 step_name:
@@ -132,11 +132,11 @@ While an interview step is active:
 - The pipeline pauses and Claude converses naturally with the user (no auto-continuation between turns).
 - `Edit`, `Write`, and `MultiEdit` tools are blocked until requirements are confirmed.
 
-When Claude has gathered enough information, it runs a Python snippet (provided in the step output) to lock the requirements and advance the pipeline. Locked requirements are stored as `{{user_requirements}}` in shared state.
+When Claude has gathered enough information, it runs `hooks/pipeline_advance.js --step gather_requirements --requirements "<text>"` (the command is provided in the step output) to lock the requirements and advance the pipeline. Locked requirements are stored as `{{user_requirements}}` in shared state.
 
 ### Shared state
 
-Agent steps can pass output to later steps using `{{step_name_output}}` in prompts. After completing a step, Claude writes a one-line summary to the shared state under the key `<step_name>_output`.
+Agent and shell steps can pass output to later steps using `{{step_name_output}}` in prompts. For agent steps, Claude supplies a one-line summary via `pipeline_advance.js --output`, stored under `<step_name>_output`. For shell steps, the `Stop` hook captures the commands' real stdout/stderr into the same key automatically.
 
 ### Terminating a pipeline
 
@@ -149,9 +149,10 @@ Use `max_visits: N` on any step to halt the pipeline with an error if the step i
 ## How it works
 
 - **Trigger**: typing `/pipeline:run` fires a `UserPromptSubmit` hook that reads the YAML, initializes pipeline state at `.pipeline/sessions/<session_id>.json`, and injects the first step's instructions into the conversation. The step description is also shown to the user directly (via `systemMessage`), so — for example — an interview step's actual question is visible, not just injected as hidden context (see `docs/adr/0005-json-systemmessage-for-userpromptsubmit-visibility.md`).
-- **Continuation**: after each Claude response, a `Stop` hook reads the current step from state and injects the next step's instructions — no user input required between steps.
+- **Continuation**: after each Claude response, a `Stop` hook reads the current step from state and injects the next step's instructions — no user input required between steps. Shell steps are run by this hook directly (via `child_process`), with `next`/`next_fail` chosen from the real exit code; Claude never runs or self-reports them.
+- **Advancing agent/interview steps**: Claude advances a completed agent or interview step by running `hooks/pipeline_advance.js --session <id> --step <name> --output "<summary>"` (or `--requirements "<text>"` for the interview entry step). The script rejects the call unless `--step` matches the actually-active step, and computes the next step from `pipeline.yaml` itself — Claude cannot redirect the pipeline to an arbitrary step (see `docs/adr/0007-hook-driven-state-advancement.md`).
 - **Interview steps**: when the current step is `type: interview`, the `Stop` hook exits silently so natural multi-turn conversation can continue. A `PreToolUse` hook blocks file-editing tools until requirements are locked.
-- **State**: pipeline state is stored one file per session at `.pipeline/sessions/<session_id>.json`, so concurrent sessions never contend on the same file (see `docs/adr/0006-per-session-state-files.md`).
+- **State**: pipeline state is stored one file per session at `.pipeline/sessions/<session_id>.json`, so concurrent sessions never contend on the same file (see `docs/adr/0006-per-session-state-files.md`). A `PreToolUse` guard (`hooks/guard_state.js`) blocks `Edit`/`Write`/`MultiEdit` and matching `Bash` commands from touching these files directly, keeping `pipeline_advance.js` as the only sanctioned way to mutate state (best-effort for `Bash` — see ADR 0007).
 
 > **Note:** Both hooks require the `CLAUDE_PROJECT_DIR` environment variable to be set to the project root. Claude Code sets this automatically when running hooks — if you run hooks manually for debugging, set the variable explicitly: `CLAUDE_PROJECT_DIR=$(pwd) node hooks/check_pipeline.js`.
 
