@@ -1,6 +1,6 @@
 {
   "name": "claude-code-pipeline",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "scripts": {
     "test": "jest",
     "lint": "eslint .",
