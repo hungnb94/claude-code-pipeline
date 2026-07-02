@@ -145,24 +145,35 @@ describe('trigger_pipeline.js', () => {
 
   // ── Test 7: happy path — default YAML ───────────────────────────────────
   it('exits 0, initializes state, and prints step prompt when using default pipeline', () => {
-    const { payload } = runHookAndParse('/pipeline:run', SESSION_ID);
-
-    expect(payload.systemMessage).toContain(
-      "Pipeline initialized from '.pipeline/pipeline.yaml'"
+    const tempDir = makeTempProject(
+      'entry: gather_requirements\nsteps:\n  gather_requirements:\n    type: agent\n    prompt: hi\n'
     );
-    expect(payload.hookSpecificOutput.hookEventName).toBe('UserPromptSubmit');
-    expect(payload.hookSpecificOutput.additionalContext).toContain(
-      "Pipeline step: 'gather_requirements'"
-    );
+    try {
+      const result = runHookInDir('/pipeline:run', SESSION_ID, tempDir);
+      expect(result.status).toBe(0);
+      const payload = JSON.parse(result.stdout);
 
-    const state = readSessionState(SESSION_ID);
-    expect(state).not.toBeNull();
-    expect(state.mode).toBe('pipeline');
-    expect(state.pipeline).toBe('.pipeline/pipeline.yaml');
-    expect(state.current_step).toBe('gather_requirements');
-    expect(state.completed_steps).toEqual([]);
-    expect(state.shared_state).toEqual({ user_requirements: '' });
-    expect(state.visit_counts).toEqual({});
+      expect(payload.systemMessage).toContain(
+        "Pipeline initialized from '.pipeline/pipeline.yaml'"
+      );
+      expect(payload.hookSpecificOutput.hookEventName).toBe(
+        'UserPromptSubmit'
+      );
+      expect(payload.hookSpecificOutput.additionalContext).toContain(
+        "Pipeline step: 'gather_requirements'"
+      );
+
+      const state = readTempSessionState(tempDir, SESSION_ID);
+      expect(state).not.toBeNull();
+      expect(state.mode).toBe('pipeline');
+      expect(state.pipeline).toBe('.pipeline/pipeline.yaml');
+      expect(state.current_step).toBe('gather_requirements');
+      expect(state.completed_steps).toEqual([]);
+      expect(state.shared_state).toEqual({ user_requirements: '' });
+      expect(state.visit_counts).toEqual({});
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
   });
 
   // ── Test 8: happy path — explicit YAML ──────────────────────────────────
