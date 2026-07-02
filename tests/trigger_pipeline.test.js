@@ -24,6 +24,13 @@ function runHook(prompt, sessionId) {
   });
 }
 
+function runHookAndParse(prompt, sessionId) {
+  const result = runHook(prompt, sessionId);
+  expect(result.status).toBe(0);
+  const payload = JSON.parse(result.stdout);
+  return { result, payload };
+}
+
 describe('trigger_pipeline.js', () => {
   let SESSION_ID;
 
@@ -111,19 +118,21 @@ describe('trigger_pipeline.js', () => {
 
   // ── Test 7: happy path — default YAML ───────────────────────────────────
   it('exits 0, initializes state, and prints step prompt when using default pipeline', () => {
-    const result = runHook('/pipeline:run', SESSION_ID);
+    const { payload } = runHookAndParse('/pipeline:run', SESSION_ID);
 
-    expect(result.status).toBe(0);
-    expect(result.stdout).toContain(
+    expect(payload.systemMessage).toContain(
       "Pipeline initialized from '.pipeline/pipeline.yaml'"
     );
-    expect(result.stdout).toContain("Pipeline step: 'plan'");
+    expect(payload.hookSpecificOutput.hookEventName).toBe('UserPromptSubmit');
+    expect(payload.hookSpecificOutput.additionalContext).toContain(
+      "Pipeline step: 'gather_requirements'"
+    );
 
     const state = readSessionState(SESSION_ID);
     expect(state).not.toBeNull();
     expect(state.mode).toBe('pipeline');
     expect(state.pipeline).toBe('.pipeline/pipeline.yaml');
-    expect(state.current_step).toBe('plan');
+    expect(state.current_step).toBe('gather_requirements');
     expect(state.completed_steps).toEqual([]);
     expect(state.shared_state).toEqual({ user_requirements: '' });
     expect(state.visit_counts).toEqual({});
@@ -131,13 +140,17 @@ describe('trigger_pipeline.js', () => {
 
   // ── Test 8: happy path — explicit YAML ──────────────────────────────────
   it('exits 0, initializes state, and prints step prompt when given explicit yaml path', () => {
-    const result = runHook('/pipeline:run examples/pipeline.yaml', SESSION_ID);
+    const { payload } = runHookAndParse(
+      '/pipeline:run examples/pipeline.yaml',
+      SESSION_ID
+    );
 
-    expect(result.status).toBe(0);
-    expect(result.stdout).toContain(
+    expect(payload.systemMessage).toContain(
       "Pipeline initialized from 'examples/pipeline.yaml'"
     );
-    expect(result.stdout).toContain("Pipeline step: 'clarify'");
+    expect(payload.hookSpecificOutput.additionalContext).toContain(
+      "Pipeline step: 'clarify'"
+    );
 
     const state = readSessionState(SESSION_ID);
     expect(state).not.toBeNull();
@@ -151,13 +164,12 @@ describe('trigger_pipeline.js', () => {
 
   // ── Test 9: inline requirements, no explicit path ────────────────────────
   it('stores inline requirements in shared_state when no yaml path given', () => {
-    const result = runHook(
+    const { payload } = runHookAndParse(
       '/pipeline:run Add authentication to the app',
       SESSION_ID
     );
 
-    expect(result.status).toBe(0);
-    expect(result.stdout).toContain(
+    expect(payload.systemMessage).toContain(
       "Pipeline initialized from '.pipeline/pipeline.yaml'"
     );
 
@@ -169,13 +181,12 @@ describe('trigger_pipeline.js', () => {
 
   // ── Test 10: inline requirements with explicit yaml path ─────────────────
   it('stores inline requirements in shared_state when explicit yaml path given', () => {
-    const result = runHook(
+    const { payload } = runHookAndParse(
       '/pipeline:run examples/pipeline.yaml Add authentication to the app',
       SESSION_ID
     );
 
-    expect(result.status).toBe(0);
-    expect(result.stdout).toContain(
+    expect(payload.systemMessage).toContain(
       "Pipeline initialized from 'examples/pipeline.yaml'"
     );
 
@@ -188,14 +199,52 @@ describe('trigger_pipeline.js', () => {
 
   // ── Test 11: requirements rendered in entry step prompt ──────────────────
   it('renders user_requirements in entry step prompt output', () => {
-    const result = runHook(
+    const { payload } = runHookAndParse(
       '/pipeline:run tests/fixtures/requirements-entry.yaml Add authentication to the app',
       SESSION_ID
     );
 
-    expect(result.status).toBe(0);
-    expect(result.stdout).toContain(
+    expect(payload.hookSpecificOutput.additionalContext).toContain(
       'Implement the following: Add authentication to the app'
     );
+  });
+
+  // ── Test 12: interview step not entry ────────────────────────────────────
+  it('exits 1 when interview step is not the entry step', () => {
+    const result = runHook(
+      '/pipeline:run tests/fixtures/interview-non-entry.yaml',
+      SESSION_ID
+    );
+
+    expect(result.status).toBe(1);
+    expect(result.stdout).toContain('gather_requirements');
+    expect(result.stdout).toContain('must be the entry step');
+  });
+
+  // ── Test 13: interview step is entry ────────────────────────────────────
+  it('exits 0 and outputs interview step when entry is type=interview', () => {
+    const { payload } = runHookAndParse(
+      '/pipeline:run tests/fixtures/interview-entry.yaml',
+      SESSION_ID
+    );
+
+    expect(payload.systemMessage).toContain('(type=interview)');
+    expect(payload.hookSpecificOutput.additionalContext).toContain(
+      '(type=interview)'
+    );
+    expect(payload.hookSpecificOutput.additionalContext).not.toContain(
+      'Execute the following prompt'
+    );
+  });
+
+  // ── Test 14: interview step missing next ─────────────────────────────────
+  it('exits 1 when interview entry step has no next', () => {
+    const result = runHook(
+      '/pipeline:run tests/fixtures/interview-no-next.yaml',
+      SESSION_ID
+    );
+
+    expect(result.status).toBe(1);
+    expect(result.stdout).toContain("must have a 'next' step");
   });
 });

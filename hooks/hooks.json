@@ -1,6 +1,17 @@
 {
   "description": "Pipeline plugin hooks — UserPromptSubmit initializes pipeline on /pipeline:run, Stop drives step continuation.",
   "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/guard_interview.js"]
+          }
+        ]
+      }
+    ],
     "UserPromptSubmit": [
       {
         "hooks": [

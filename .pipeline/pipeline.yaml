@@ -1,16 +1,26 @@
-entry: plan
+entry: gather_requirements
 
 steps:
+  gather_requirements:
+    type: interview
+    prompt: |
+      /interview-wiki Hỏi user về task cần thực hiện trên project này (tính năng mới, bug fix, refactor, hay docs). Khai thác scope, constraints, và acceptance criteria cho đến khi đủ rõ để viết plan chi tiết.
+    next: plan
+
   plan:
     type: agent
     prompt: |
-      Writing a step-by-step implementation plan.
+      Write a step-by-step implementation plan for the following requirements:
+
+      {{user_requirements}}
     next: review_plan
 
   review_plan:
     type: agent
     prompt: |
-      Act as a independent reviewer review implementation plan and create better plan
+      Act as an independent reviewer. Review the implementation plan against the requirements below and produce a better plan.
+
+      Requirements: {{user_requirements}}
     next: implementation
 
   implementation:

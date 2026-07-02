@@ -1,0 +1,11 @@
+entry: gather_requirements
+steps:
+  gather_requirements:
+    type: interview
+    prompt: |
+      Gather requirements from the user.
+    next: plan
+  plan:
+    type: agent
+    prompt: |
+      Plan based on: {{user_requirements}}

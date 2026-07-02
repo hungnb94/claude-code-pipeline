@@ -113,6 +113,27 @@ step_name:
   max_visits: 5 # optional: halt pipeline if step is visited N or more times
 ```
 
+### Interview step
+
+Gathers requirements from the user through multi-turn conversation before the pipeline proceeds. Must be the `entry` step — a validation error is raised if placed anywhere else.
+
+```yaml
+entry: gather_requirements
+
+steps:
+  gather_requirements:
+    type: interview
+    prompt: |
+      Ask the user what they want to build. Gather scope and acceptance criteria.
+    next: plan # required — where to go after requirements are locked
+```
+
+While an interview step is active:
+- The pipeline pauses and Claude converses naturally with the user (no auto-continuation between turns).
+- `Edit`, `Write`, and `MultiEdit` tools are blocked until requirements are confirmed.
+
+When Claude has gathered enough information, it runs a Python snippet (provided in the step output) to lock the requirements and advance the pipeline. Locked requirements are stored as `{{user_requirements}}` in shared state.
+
 ### Shared state
 
 Agent steps can pass output to later steps using `{{step_name_output}}` in prompts. After completing a step, Claude writes a one-line summary to the shared state under the key `<step_name>_output`.
@@ -127,8 +148,9 @@ Use `max_visits: N` on any step to halt the pipeline with an error if the step i
 
 ## How it works
 
-- **Trigger**: typing `/pipeline:run` fires a `UserPromptSubmit` hook that reads the YAML, initializes pipeline state at `.pipeline/state.json`, and injects the first step's instructions into the conversation.
+- **Trigger**: typing `/pipeline:run` fires a `UserPromptSubmit` hook that reads the YAML, initializes pipeline state at `.pipeline/state.json`, and injects the first step's instructions into the conversation. The step description is also shown to the user directly (via `systemMessage`), so — for example — an interview step's actual question is visible, not just injected as hidden context (see `docs/adr/0005-json-systemmessage-for-userpromptsubmit-visibility.md`).
 - **Continuation**: after each Claude response, a `Stop` hook reads the current step from state and injects the next step's instructions — no user input required between steps.
+- **Interview steps**: when the current step is `type: interview`, the `Stop` hook exits silently so natural multi-turn conversation can continue. A `PreToolUse` hook blocks file-editing tools until requirements are locked.
 - **State**: pipeline state is stored per-session in `.pipeline/state.json`. Multiple concurrent sessions in the same project are isolated by session ID.
 
 > **Note:** Both hooks require the `CLAUDE_PROJECT_DIR` environment variable to be set to the project root. Claude Code sets this automatically when running hooks — if you run hooks manually for debugging, set the variable explicitly: `CLAUDE_PROJECT_DIR=$(pwd) node hooks/check_pipeline.js`.

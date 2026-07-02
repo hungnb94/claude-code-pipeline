@@ -8,6 +8,8 @@ const {
   render,
   buildAgentUpdateBlock,
   buildShellUpdateBlock,
+  buildInterviewUpdateBlock,
+  buildStepOutput,
 } = require('../hooks/pipeline_utils.js');
 
 describe('parseYAML', () => {
@@ -213,5 +215,27 @@ describe('default pipeline routing', () => {
     );
     const pipeline = parseYAML(yaml);
     expect(pipeline.steps.fix_lint.next).toBe('verify');
+  });
+});
+
+describe('buildInterviewUpdateBlock', () => {
+  it('sets requirements_locked', () => {
+    const result = buildInterviewUpdateBlock('sess1', 'gather', 'plan');
+    expect(result).toContain('requirements_locked');
+    expect(result).toContain("'true'");
+    expect(result).toContain('REPLACE_WITH_GATHERED_REQUIREMENTS');
+  });
+});
+
+describe('buildStepOutput', () => {
+  it('dispatches type=interview without Execute the following prompt framing', () => {
+    const result = buildStepOutput(
+      'sess1',
+      'gather',
+      { type: 'interview', prompt: 'Hello', next: 'plan' },
+      {}
+    );
+    expect(result).toContain('(type=interview)');
+    expect(result).not.toContain('Execute the following prompt');
   });
 });

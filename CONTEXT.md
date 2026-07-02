@@ -8,10 +8,11 @@ A YAML file defining a sequence of steps to be executed automatically by Claude.
 
 ### Step
 
-A single unit of work in a pipeline. Two types:
+A single unit of work in a pipeline. Three types:
 
 - **agent step** — Claude executes a prompt and produces output
 - **shell step** — one or more shell commands run via Bash; pass/fail determined by exit code
+- **interview step** — Claude gathers requirements from the user across multiple turns before the pipeline proceeds
 
 ### Pipeline State
 
@@ -71,6 +72,14 @@ The session ID is provided to hooks via hook input. Each session reads and write
 ### Setup Statusline Skill
 
 A Claude Code skill (`/pipeline:setup-statusline`) that appends a pipeline state block to the user's configured status line script. Reads the `statusLine` key from Claude Code settings, adapts the block to the script's language and conventions, and is idempotent. It superseded the per-step progress header that both hooks used to write to stderr (`✅ prev-step → 🔄 current-step`) — that header was removed since this skill shows the same info persistently, plus pipeline name and retry count. See `docs/adr/0002-stderr-for-progress-header-visibility.md` (Superseded).
+
+### Interview Step
+
+A step with `type: interview` used to gather requirements through multi-turn conversation before the pipeline proceeds.
+
+### Requirements Lock
+
+The action of finalizing gathered requirements in an interview step, making them available to subsequent steps via `{{user_requirements}}`.
 
 ### Version
 

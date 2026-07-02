@@ -1,0 +1,9 @@
+entry: plan
+steps:
+  plan:
+    type: agent
+    prompt: Make a plan.
+    next: gather_requirements
+  gather_requirements:
+    type: interview
+    prompt: Should be rejected.

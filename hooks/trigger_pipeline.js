@@ -5,6 +5,7 @@ const path = require('path');
 const {
   parseYAML,
   setSessionState,
+  buildStepDescription,
   buildStepOutput,
   parseStdinJSON,
   PROJECT_ROOT,
@@ -61,6 +62,24 @@ const {
     process.exit(1);
   }
 
+  const interviewNonEntry = Object.entries(config.steps).filter(
+    ([name, s]) => s.type === 'interview' && name !== config.entry
+  );
+  if (interviewNonEntry.length > 0) {
+    const names = interviewNonEntry.map(([n]) => n).join(', ');
+    process.stdout.write(
+      `Invalid pipeline: interview step(s) '${names}' must be the entry step.\n`
+    );
+    process.exit(1);
+  }
+
+  if (entryStep.type === 'interview' && !entryStep.next) {
+    process.stdout.write(
+      `Invalid pipeline: interview step '${config.entry}' must have a 'next' step.\n`
+    );
+    process.exit(1);
+  }
+
   if (entryStep.terminal) {
     process.stdout.write(
       `Pipeline initialized from '${pipelineFile}' but entry step '${config.entry}' is terminal — pipeline complete.\n`
@@ -77,16 +96,19 @@ const {
     shared_state: { user_requirements: userRequirements },
   });
 
-  const stepOutput = buildStepOutput(
-    sessionId,
-    config.entry,
-    entryStep,
-    { user_requirements: userRequirements }
-  );
+  const initLine = `Pipeline initialized from '${pipelineFile}'. Entry: '${config.entry}'.`;
+  const sharedState = { user_requirements: userRequirements };
+  const stepOutput = buildStepOutput(sessionId, config.entry, entryStep, sharedState);
+  const stepDescription = buildStepDescription(config.entry, entryStep, sharedState);
+
   process.stdout.write(
-    `Pipeline initialized from '${pipelineFile}'. Entry: '${config.entry}'.\n\n` +
-      stepOutput +
-      '\n'
+    JSON.stringify({
+      systemMessage: `${initLine}\n\n${stepDescription}`,
+      hookSpecificOutput: {
+        hookEventName: 'UserPromptSubmit',
+        additionalContext: `${initLine}\n\n${stepOutput}`,
+      },
+    })
   );
   process.exit(0);
 })();

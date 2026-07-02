@@ -1,45 +1,22 @@
 #!/usr/bin/env node
 
-const fs = require('fs');
-const path = require('path');
 const {
-  parseYAML,
-  getSessionState,
+  loadActivePipelineContext,
   setSessionState,
   buildStepDescription,
   buildStepOutput,
   parseStdinJSON,
-  PROJECT_ROOT,
 } = require('./pipeline_utils.js');
 
 (async () => {
   const data = await parseStdinJSON();
 
-  const sessionId = data.session_id || '';
-  if (!sessionId) {
+  const ctx = loadActivePipelineContext(data);
+  if (!ctx) {
     process.exit(0);
   }
 
-  const state = getSessionState(sessionId);
-  if (!state || state.mode !== 'pipeline') {
-    process.exit(0);
-  }
-
-  const pipelinePath = path.join(
-    PROJECT_ROOT,
-    state.pipeline || '.pipeline/pipeline.yaml'
-  );
-  if (!fs.existsSync(pipelinePath)) {
-    process.exit(0);
-  }
-
-  let config;
-  try {
-    config = parseYAML(fs.readFileSync(pipelinePath, 'utf8'));
-  } catch {
-    process.exit(0);
-  }
-
+  const { sessionId, state, config } = ctx;
   let current = state.current_step || '';
   let step = (config.steps || {})[current] || null;
   if (!step) {
@@ -86,6 +63,10 @@ const {
   if (step.terminal) {
     state.mode = 'free';
     setSessionState(sessionId, state);
+    process.exit(0);
+  }
+
+  if (step.type === 'interview') {
     process.exit(0);
   }
 

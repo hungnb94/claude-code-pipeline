@@ -1,6 +1,6 @@
+const path = require('path');
 const { spawnSync } = require('child_process');
 const { randomUUID } = require('crypto');
-const path = require('path');
 
 const {
   PROJECT_ROOT,
@@ -58,13 +58,13 @@ describe('check_pipeline.js', () => {
     const payload = runHookAndBlock(SESSION_ID);
     expect(payload.reason).toContain("Pipeline step: 'plan' (type=agent)");
     expect(payload.reason).toContain(
-      'Writing a step-by-step implementation plan.'
+      'Write a step-by-step implementation plan for the following requirements:'
     );
     expect(payload.systemMessage).toContain(
       "Pipeline step: 'plan' (type=agent)"
     );
     expect(payload.systemMessage).toContain(
-      'Writing a step-by-step implementation plan.'
+      'Write a step-by-step implementation plan for the following requirements:'
     );
   });
 
@@ -161,7 +161,7 @@ describe('check_pipeline.js', () => {
     setSessionState(SESSION_ID, createSessionState());
     const payload = runHookAndBlock(SESSION_ID);
     expect(payload.reason).toContain('Execute the following prompt:');
-    expect(payload.reason).toContain('Writing a step-by-step implementation plan.');
+    expect(payload.reason).toContain('Write a step-by-step implementation plan for the following requirements:');
   });
 
   it('writes full shell step output to reason', () => {
@@ -182,5 +182,27 @@ describe('check_pipeline.js', () => {
     const result = runHook(SESSION_ID);
     expect(result.status).toBe(0);
     expect(result.stdout).toBe('');
+  });
+
+  it('exits 0 silently when current step is type=interview', () => {
+    setSessionState(SESSION_ID, createSessionState({
+      pipeline: 'tests/fixtures/interview-entry.yaml',
+      current_step: 'gather_requirements',
+    }));
+    const result = runHook(SESSION_ID);
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe('');
+    expect(result.stderr).toBe('');
+  });
+
+  it('injects next step after requirements are locked', () => {
+    setSessionState(SESSION_ID, createSessionState({
+      pipeline: 'tests/fixtures/interview-entry.yaml',
+      current_step: 'plan',
+      completed_steps: ['gather_requirements'],
+      shared_state: { requirements_locked: 'true', user_requirements: 'Build a todo app' },
+    }));
+    const payload = runHookAndBlock(SESSION_ID);
+    expect(payload.reason).toContain('(type=agent)');
   });
 });
