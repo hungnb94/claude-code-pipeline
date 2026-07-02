@@ -91,6 +91,17 @@ describe('guard_interview.js', () => {
     expect(out.decision).toBe('block');
   });
 
+  it('exits 0 silently (does not crash) when the pipeline file is missing', () => {
+    setSessionState(
+      SESSION_ID,
+      createSessionState({ pipeline: 'nonexistent/pipeline.yaml' })
+    );
+    const result = runGuard(SESSION_ID, 'Edit');
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe('');
+    expect(result.stderr).toBe('');
+  });
+
   it('allows Bash when requirements are not locked', () => {
     setSessionState(
       SESSION_ID,

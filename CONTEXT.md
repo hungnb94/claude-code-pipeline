@@ -69,6 +69,10 @@ A per-step guard (`max_visits: N`) that stops a step from being retried more tha
 
 A field in pipeline state. `"pipeline"` means execution is active; `"free"` means the pipeline has completed or has not started.
 
+### Pipeline File Error
+
+Distinct from "no active pipeline" (silent, `Mode` is `"free"` or absent): an active pipeline session (`Mode` is `"pipeline"`) whose referenced YAML file has gone missing or become unreadable. `loadActivePipelineContext` (in `hooks/pipeline_utils.js`) surfaces this as an error descriptor rather than treating it the same as "no active pipeline". The `Stop` hook halts the pipeline (`Mode` → `"free"`) and shows a visible `❌` error naming the path and recovery steps, instead of exiting silently.
+
 ### Pipeline State File
 
 One file per session at `.pipeline/sessions/<session_id>.json`, containing that session's state directly (`{ "mode": "pipeline", "current_step": "...", ... }`). The session ID is provided to hooks via hook input. Each session reads and writes only its own file, so concurrent sessions never contend on the same file. A legacy single-file format (`.pipeline/state.json`, keyed by session ID) is read as a fallback for sessions that started before the per-file format existed.

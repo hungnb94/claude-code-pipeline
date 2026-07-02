@@ -18,6 +18,24 @@ const {
     process.exit(0);
   }
 
+  if (ctx.error) {
+    const { sessionId, state, error } = ctx;
+    state.mode = 'free';
+    setSessionState(sessionId, state);
+    const reason =
+      error.type === 'missing_file'
+        ? `Pipeline error: pipeline file '${error.path}' referenced by the active session no longer exists. Restore the file at that path, or run /pipeline:run <path> to start a new pipeline. Pipeline halted.`
+        : `Pipeline error: pipeline file '${error.path}' could not be parsed as valid pipeline YAML. Fix the file, or run /pipeline:run <path> to start a new pipeline. Pipeline halted.`;
+    process.stdout.write(
+      JSON.stringify({
+        decision: 'block',
+        reason,
+        systemMessage: `❌ ${reason}`,
+      })
+    );
+    process.exit(0);
+  }
+
   const { sessionId, state, config } = ctx;
   let current = state.current_step || '';
   let step;

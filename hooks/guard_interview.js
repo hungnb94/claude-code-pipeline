@@ -9,7 +9,7 @@ const {
   const data = await parseStdinJSON();
 
   const ctx = loadActivePipelineContext(data);
-  if (!ctx) {
+  if (!ctx || ctx.error) {
     process.exit(0);
   }
 
