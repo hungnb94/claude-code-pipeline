@@ -16,7 +16,7 @@ A single unit of work in a pipeline. Three types:
 
 ### Pipeline State
 
-A JSON file at `.pipeline/state.json` tracking runtime execution: current step, completed steps, visit counts, and shared state (inter-step outputs).
+A JSON file at `.pipeline/sessions/<session_id>.json` tracking runtime execution for one session: current step, completed steps, visit counts, and shared state (inter-step outputs).
 
 ### Shared State
 
@@ -59,15 +59,7 @@ A field in pipeline state. `"pipeline"` means execution is active; `"free"` mean
 
 ### Pipeline State File
 
-A single file at `.pipeline/state.json` containing states for all sessions, keyed by session ID:
-
-```json
-{
-  "<session_id>": { "mode": "pipeline", "current_step": "...", ... }
-}
-```
-
-The session ID is provided to hooks via hook input. Each session reads and writes only its own key.
+One file per session at `.pipeline/sessions/<session_id>.json`, containing that session's state directly (`{ "mode": "pipeline", "current_step": "...", ... }`). The session ID is provided to hooks via hook input. Each session reads and writes only its own file, so concurrent sessions never contend on the same file. A legacy single-file format (`.pipeline/state.json`, keyed by session ID) is read as a fallback for sessions that started before the per-file format existed.
 
 ### Setup Statusline Skill
 

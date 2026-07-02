@@ -4,6 +4,7 @@ node_modules/
 package-lock.json
 
 .pipeline/state.json
+.pipeline/sessions/
 .claude/worktrees
 docs/plans
 .DS_Store
