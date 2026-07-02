@@ -11,6 +11,10 @@ const PROJECT_ROOT =
   })();
 const STATE_PATH = path.join(PROJECT_ROOT, '.pipeline/state.json');
 const SESSIONS_DIR = path.join(PROJECT_ROOT, '.pipeline/sessions');
+// hooks/pipeline_utils.js always lives at <plugin_root>/hooks/, so this is a
+// reliable way to get an absolute, directly-runnable plugin root regardless
+// of whether CLAUDE_PLUGIN_ROOT is set in this process's environment.
+const PLUGIN_ROOT = path.resolve(__dirname, '..');
 
 function sessionFilePath(sessionId) {
   return path.join(SESSIONS_DIR, `${path.basename(sessionId)}.json`);
@@ -161,101 +165,40 @@ function setSessionState(sessionId, sessionState) {
   fs.writeFileSync(sessionFilePath(sessionId), JSON.stringify(sessionState, null, 2));
 }
 
-function escapeForPython(s) {
-  return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-}
-
-function pythonLoadSessionLines(sessionId) {
-  const sid = escapeForPython(sessionId);
-  const ownPath = escapeForPython(sessionFilePath(sessionId));
-  const legacyPath = escapeForPython(STATE_PATH);
-  return [
-    `import json; from pathlib import Path`,
-    `p = Path('${ownPath}')`,
-    `sess = json.loads(p.read_text()) if p.exists() else json.loads(Path('${legacyPath}').read_text())['${sid}']`,
-  ];
-}
-
-function pythonSaveSessionLines() {
-  return [
-    `p.parent.mkdir(parents=True, exist_ok=True)`,
-    `p.write_text(json.dumps(sess, indent=2))`,
-  ];
-}
-
-function buildAgentUpdateBlock(sessionId, stepName, next) {
-  const sname = escapeForPython(stepName);
-  const nextSafe = next ? escapeForPython(next) : '';
-  const advance = next
-    ? `sess['current_step'] = '${nextSafe}'`
-    : `sess['mode'] = 'free'`;
-  const py = [
-    ...pythonLoadSessionLines(sessionId),
-    `sess['completed_steps'].append('${sname}')`,
-    `sess.setdefault('visit_counts', {})`,
-    `sess['visit_counts']['${sname}'] = sess['visit_counts'].get('${sname}', 0) + 1`,
-    `sess['shared_state']['${sname}_output'] = 'REPLACE_WITH_ONE_LINE_SUMMARY'`,
-    advance,
-    ...pythonSaveSessionLines(),
-  ].join('\n');
+function buildAdvanceInstruction(sessionId, stepName, step) {
+  const script = path.join(PLUGIN_ROOT, 'hooks/pipeline_advance.js');
+  if (step.type === 'interview') {
+    return (
+      `When you have gathered all requirements, advance the pipeline by running:\n\n` +
+      `\`\`\`bash\nnode ${script} --session ${sessionId} --step ${stepName} --requirements "<complete gathered requirements text>"\n\`\`\`\n\n` +
+      `Replace <complete gathered requirements text> with the complete requirements text you gathered.`
+    );
+  }
   return (
-    `After completing your response, advance the pipeline by running:\n\n` +
-    `\`\`\`bash\npython3 -c "\n${py}\n"\n\`\`\``
+    `When you have completed this step, advance the pipeline by running:\n\n` +
+    `\`\`\`bash\nnode ${script} --session ${sessionId} --step ${stepName} --output "<one-line summary of what you did>"\n\`\`\`\n\n` +
+    `Replace <one-line summary of what you did> with a one-line summary of what you did.`
   );
 }
 
-function buildInterviewUpdateBlock(sessionId, stepName, next) {
-  const sname = escapeForPython(stepName);
-  const advance = next
-    ? `sess['current_step'] = '${escapeForPython(next)}'`
-    : `sess['mode'] = 'free'`;
-  const py = [
-    ...pythonLoadSessionLines(sessionId),
-    `sess['completed_steps'].append('${sname}')`,
-    `sess.setdefault('visit_counts', {})`,
-    `sess['visit_counts']['${sname}'] = sess['visit_counts'].get('${sname}', 0) + 1`,
-    `sess['shared_state']['user_requirements'] = 'REPLACE_WITH_GATHERED_REQUIREMENTS'`,
-    `sess['shared_state']['requirements_locked'] = 'true'`,
-    advance,
-    ...pythonSaveSessionLines(),
-  ].join('\n');
-  return (
-    `When you have gathered all requirements, run the following to lock them and continue:\n\n` +
-    `\`\`\`bash\npython3 -c "\n${py}\n"\n\`\`\`\n\n` +
-    `Replace REPLACE_WITH_GATHERED_REQUIREMENTS with the complete requirements text you gathered.`
-  );
-}
-
-function buildShellUpdateBlock(sessionId, stepName, next, nextFail) {
-  const sname = escapeForPython(stepName);
-  const nextSafe = next ? escapeForPython(next) : '';
-  const nextFailSafe = nextFail ? escapeForPython(nextFail) : '';
-  const baseLines = [
-    ...pythonLoadSessionLines(sessionId),
-    `sess['completed_steps'].append('${sname}')`,
-    `sess.setdefault('visit_counts', {})`,
-    `sess['visit_counts']['${sname}'] = sess['visit_counts'].get('${sname}', 0) + 1`,
-  ];
-  const successLine = next
-    ? `sess['current_step'] = '${nextSafe}'`
-    : `sess['mode'] = 'free'`;
-  const failLine = nextFail
-    ? `sess['current_step'] = '${nextFailSafe}'`
-    : `sess['mode'] = 'free'`;
-  const pySuccess = [
-    ...baseLines,
-    successLine,
-    ...pythonSaveSessionLines(),
-  ].join('\n');
-  const pyFail = [
-    ...baseLines,
-    failLine,
-    ...pythonSaveSessionLines(),
-  ].join('\n');
-  return (
-    `If ALL commands exit 0, run:\n\`\`\`bash\npython3 -c "\n${pySuccess}\n"\n\`\`\`\n\n` +
-    `If ANY command fails, run:\n\`\`\`bash\npython3 -c "\n${pyFail}\n"\n\`\`\``
-  );
+function runShellStep(step, cwd) {
+  const { spawnSync } = require('child_process');
+  let output = '';
+  for (const cmd of step.commands || []) {
+    const result = spawnSync(cmd, {
+      shell: true,
+      cwd,
+      encoding: 'utf8',
+    });
+    const stdout = result.stdout || '';
+    const stderr = result.stderr || '';
+    output += `$ ${cmd}\n${stdout}${stderr}`;
+    const failed = result.status !== 0;
+    if (failed) {
+      return { ok: false, output };
+    }
+  }
+  return { ok: true, output };
 }
 
 function readStdin() {
@@ -303,27 +246,12 @@ function buildStepDescription(stepName, step, sharedState) {
 
 function buildStepOutput(sessionId, stepName, step, sharedState) {
   const description = buildStepDescription(stepName, step, sharedState);
-  if (step.type === 'interview') {
-    return (
-      `${description}\n\n` +
-      buildInterviewUpdateBlock(sessionId, stepName, step.next || '')
-    );
-  }
   if (step.type === 'shell') {
-    return (
-      `${description}\n\n` +
-      buildShellUpdateBlock(
-        sessionId,
-        stepName,
-        step.next || '',
-        step.next_fail || ''
-      )
-    );
+    // Shell steps are executed by the hook itself and never advanced via
+    // pipeline_advance.js, so there is no Claude-facing advance instruction.
+    return description;
   }
-  return (
-    `${description}\n\n` +
-    buildAgentUpdateBlock(sessionId, stepName, step.next || '')
-  );
+  return `${description}\n\n${buildAdvanceInstruction(sessionId, stepName, step)}`;
 }
 
 function loadActivePipelineContext(data) {
@@ -355,13 +283,13 @@ module.exports = {
   setSessionState,
   sessionFilePath,
   loadActivePipelineContext,
-  buildAgentUpdateBlock,
-  buildInterviewUpdateBlock,
-  buildShellUpdateBlock,
+  buildAdvanceInstruction,
+  runShellStep,
   buildStepDescription,
   buildStepOutput,
   readStdin,
   parseStdinJSON,
   PROJECT_ROOT,
+  PLUGIN_ROOT,
   STATE_PATH,
 };

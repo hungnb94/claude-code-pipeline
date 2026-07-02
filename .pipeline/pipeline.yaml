@@ -4,7 +4,7 @@ steps:
   gather_requirements:
     type: interview
     prompt: |
-      /interview-wiki Hỏi user về task cần thực hiện trên project này (tính năng mới, bug fix, refactor, hay docs). Khai thác scope, constraints, và acceptance criteria cho đến khi đủ rõ để viết plan chi tiết.
+      /interview-wiki Ask the user about the task to perform on this project (new feature, bug fix, refactor, or docs). Probe scope, constraints, and acceptance criteria until it's clear enough to write a detailed plan.
     next: plan
 
   plan:

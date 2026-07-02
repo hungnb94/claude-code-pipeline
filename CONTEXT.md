@@ -42,6 +42,18 @@ The directory where Claude Code installs a plugin. `${CLAUDE_PLUGIN_ROOT}` appea
 
 The mechanism by which subsequent steps are driven after step 1. The `Stop` hook detects an active pipeline (`mode === "pipeline"`), reads the current step from state, renders its prompt, and injects it — causing Claude to execute the next step without user intervention.
 
+### Advance Script
+
+`hooks/pipeline_advance.js`, the sole sanctioned way for Claude to mutate pipeline state for agent and interview steps. Claude supplies `--session <id>`, `--step <name>` (rejected unless it equals `state.current_step`), and exactly one of `--output <text>` (agent steps) or `--requirements <text>` (interview entry step). The script computes `next` from `pipeline.yaml` itself — Claude cannot choose a destination step. Shell steps never use the Advance Script; they advance automatically (see Shell Step Execution). See `docs/adr/0007-hook-driven-state-advancement.md`.
+
+### Shell Step Execution
+
+Shell steps run inside the `Stop` hook (`check_pipeline.js`) itself via `child_process`, not as a Bash action Claude takes. The hook captures stdout/stderr into `shared_state[<step_name>_output]` and picks `next` or `next_fail` from the real exit code, chaining through consecutive shell steps in one hook invocation until it reaches a non-shell step, a failure, or a cycle. A per-invocation guard halts the pipeline with a cycle error if any step repeats before that (independent of, and in addition to, the `Max Visits` guard) — this catches shell-step loops that have no `max_visits` set, which would otherwise hang the hook. Claude is never asked to run or self-report these commands. See `docs/adr/0007-hook-driven-state-advancement.md`.
+
+### State Guard
+
+`hooks/guard_state.js`, a `PreToolUse` hook denying `Edit`/`Write`/`MultiEdit` on `.pipeline/sessions/**/*.json` and `.pipeline/state.json` unconditionally, and denying `Bash` commands that reference those paths unless the command also matches a word-boundary invocation of `pipeline_advance.js` (not a bare substring check, to resist trivially mentioning the filename without calling it). The Bash half is best-effort, not a sandbox — it closes direct/low-effort tampering (Edit tool, `cat >`, `jq`, `sed`) but is not airtight against a fully adversarial agent with shell access. See `docs/adr/0007-hook-driven-state-advancement.md`.
+
 ### Routing
 
 How a step determines its successor. Two fields only:

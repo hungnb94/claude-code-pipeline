@@ -1,0 +1,14 @@
+entry: verify_shell
+
+steps:
+  verify_shell:
+    type: shell
+    commands:
+      - exit 1
+    next: lint_step
+    max_visits: 9
+
+  lint_step:
+    type: agent
+    prompt: |
+      Lint step reached.

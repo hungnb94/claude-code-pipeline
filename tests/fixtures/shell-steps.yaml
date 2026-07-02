@@ -1,0 +1,44 @@
+entry: shell_a
+
+steps:
+  shell_a:
+    type: shell
+    commands:
+      - exit 0
+    next: shell_b
+    next_fail: shell_a_failed
+
+  shell_b:
+    type: shell
+    commands:
+      - exit 0
+    next: agent_after
+    next_fail: shell_b_failed
+
+  shell_fail:
+    type: shell
+    commands:
+      - echo boom
+      - exit 1
+    next: agent_after
+    next_fail: agent_after_fail
+
+  agent_after:
+    type: agent
+    prompt: |
+      Continue after shell steps succeeded.
+
+  agent_after_fail:
+    type: agent
+    prompt: |
+      Handle shell failure.
+
+  shell_a_failed:
+    type: agent
+    prompt: |
+      shell_a failed.
+
+  shell_b_failed:
+    type: agent
+    prompt: |
+      shell_b failed.
