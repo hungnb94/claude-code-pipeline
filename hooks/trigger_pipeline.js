@@ -11,16 +11,39 @@ const {
   PROJECT_ROOT,
 } = require('./pipeline_utils.js');
 
+function detectPrefix(prompt) {
+  if (prompt.startsWith('/pipeline:run')) {
+    return '/pipeline:run';
+  }
+  const defaultPath = path.join(PROJECT_ROOT, '.pipeline/pipeline.yaml');
+  if (fs.existsSync(defaultPath)) {
+    try {
+      const cfg = parseYAML(fs.readFileSync(defaultPath, 'utf8'));
+      if (
+        typeof cfg.trigger === 'string' &&
+        cfg.trigger &&
+        (prompt === cfg.trigger || prompt.startsWith(cfg.trigger + ' '))
+      ) {
+        return cfg.trigger;
+      }
+    } catch {
+      // ignore parse errors during trigger detection - fall through to no-match
+    }
+  }
+  return null;
+}
+
 (async () => {
   const data = await parseStdinJSON();
 
   const prompt = (data.prompt || '').trim();
-  if (!prompt.startsWith('/pipeline:run')) {
+  const matchedPrefix = detectPrefix(prompt);
+  if (!matchedPrefix) {
     process.exit(0);
   }
 
   const sessionId = data.session_id || 'unknown';
-  const args = prompt.slice('/pipeline:run'.length).trim();
+  const args = prompt.slice(matchedPrefix.length).trim();
   const tokens = args.split(/\s+/);
   const pipelineFile =
     tokens[0] && tokens[0].endsWith('.yaml')

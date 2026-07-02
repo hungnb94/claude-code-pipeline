@@ -1,10 +1,41 @@
 const { spawnSync } = require('child_process');
 const { randomUUID } = require('crypto');
 const path = require('path');
+const fs = require('fs');
+const os = require('os');
 
 const { PROJECT_ROOT, readSessionState, cleanupSession } = require('./helpers');
 
 const HOOK = path.join(PROJECT_ROOT, 'hooks/trigger_pipeline.js');
+
+function makeTempProject(pipelineYaml) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'trigger-test-'));
+  fs.mkdirSync(path.join(dir, '.pipeline'), { recursive: true });
+  fs.writeFileSync(path.join(dir, '.pipeline/pipeline.yaml'), pipelineYaml);
+  return dir;
+}
+
+function runHookInDir(prompt, sessionId, cwd) {
+  const input = JSON.stringify({
+    hook_event_name: 'UserPromptSubmit',
+    session_id: sessionId,
+    prompt,
+  });
+  return spawnSync('node', [HOOK], {
+    input,
+    encoding: 'utf8',
+    cwd,
+    env: { ...process.env, CLAUDE_PROJECT_DIR: cwd },
+  });
+}
+
+function readTempSessionState(dir, sessionId) {
+  const filePath = path.join(dir, '.pipeline/sessions', `${sessionId}.json`);
+  if (!fs.existsSync(filePath)) {
+    return null;
+  }
+  return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+}
 
 function runHook(prompt, sessionId) {
   const input = JSON.stringify({
@@ -242,5 +273,90 @@ describe('trigger_pipeline.js', () => {
 
     expect(result.status).toBe(1);
     expect(result.stdout).toContain("must have a 'next' step");
+  });
+});
+
+describe('custom trigger field', () => {
+  let tempDir;
+  let sessionId;
+
+  beforeEach(() => {
+    sessionId = randomUUID();
+    tempDir = null;
+  });
+
+  afterEach(() => {
+    if (tempDir) {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  const minimalSteps = 'entry: start\nsteps:\n  start:\n    type: agent\n    prompt: hi\n';
+
+  function expectPipelineActivated(result, tempDir, sessionId) {
+    expect(result.status).toBe(0);
+    const payload = JSON.parse(result.stdout);
+    expect(payload.systemMessage).toContain(
+      "Pipeline initialized from '.pipeline/pipeline.yaml'"
+    );
+
+    const state = readTempSessionState(tempDir, sessionId);
+    expect(state).not.toBeNull();
+    expect(state.mode).toBe('pipeline');
+    expect(state.pipeline).toBe('.pipeline/pipeline.yaml');
+    expect(state.current_step).toBe('start');
+    return state;
+  }
+
+  it('no-op when there is no trigger field and prompt does not match', () => {
+    tempDir = makeTempProject(minimalSteps);
+
+    const result = runHookInDir('hello world', sessionId, tempDir);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe('');
+    expect(readTempSessionState(tempDir, sessionId)).toBeNull();
+  });
+
+  it('activates the pipeline when the custom trigger matches exactly', () => {
+    tempDir = makeTempProject(`trigger: /mypipe:go\n${minimalSteps}`);
+
+    const result = runHookInDir('/mypipe:go', sessionId, tempDir);
+
+    expectPipelineActivated(result, tempDir, sessionId);
+  });
+
+  it('captures inline requirements text after the custom trigger', () => {
+    tempDir = makeTempProject(`trigger: /mypipe:go\n${minimalSteps}`);
+
+    const result = runHookInDir(
+      '/mypipe:go Add authentication to the app',
+      sessionId,
+      tempDir
+    );
+
+    expect(result.status).toBe(0);
+    const state = readTempSessionState(tempDir, sessionId);
+    expect(state.shared_state.user_requirements).toBe(
+      'Add authentication to the app'
+    );
+  });
+
+  it('does not false-match a longer unrelated command with a short trigger', () => {
+    tempDir = makeTempProject(`trigger: /go\n${minimalSteps}`);
+
+    const result = runHookInDir('/gofmt now', sessionId, tempDir);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe('');
+    expect(readTempSessionState(tempDir, sessionId)).toBeNull();
+  });
+
+  it('/pipeline:run still works even when a custom trigger is declared', () => {
+    tempDir = makeTempProject(`trigger: /mypipe:go\n${minimalSteps}`);
+
+    const result = runHookInDir('/pipeline:run', sessionId, tempDir);
+
+    expectPipelineActivated(result, tempDir, sessionId);
   });
 });

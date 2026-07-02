@@ -80,10 +80,11 @@ Claude will execute each step automatically, without you needing to prompt it be
 
 ### Top-level fields
 
-| Field   | Required | Description                           |
-| ------- | -------- | ------------------------------------- |
-| `entry` | yes      | Name of the first step to execute     |
-| `steps` | yes      | Map of step names to step definitions |
+| Field     | Required | Description                                                                        |
+| --------- | -------- | ----------------------------------------------------------------------------------- |
+| `entry`   | yes      | Name of the first step to execute                                                  |
+| `steps`   | yes      | Map of step names to step definitions                                              |
+| `trigger` | no       | Extra activation string for `.pipeline/pipeline.yaml`, in addition to `/pipeline:run` (see [Custom trigger](#custom-trigger)) |
 
 ### Agent step
 
@@ -147,13 +148,26 @@ A step with no `next` field ends the pipeline when it completes. Alternatively, 
 
 Use `max_visits: N` on any step to halt the pipeline with an error if the step is visited N or more times. Useful for fix→verify→fix cycles where you want a safety ceiling.
 
+### Custom trigger
+
+By default, only `/pipeline:run` starts a pipeline. The default pipeline file, `.pipeline/pipeline.yaml`, can declare an optional top-level `trigger` field to add another activation string:
+
+```yaml
+trigger: /ship
+entry: plan
+steps:
+  # ...
+```
+
+Typing `/ship` (or `/ship <requirements text>`) now also starts this pipeline, exactly like `/pipeline:run` would — `/pipeline:run` keeps working unconditionally regardless of whether `trigger` is set. The match is word-boundary safe: `trigger: /go` matches `/go` or `/go do the thing`, but not `/gofmt`. Only `.pipeline/pipeline.yaml` is checked for a `trigger` field — other pipeline files are only reachable via `/pipeline:run path/to/file.yaml`.
+
 ### Missing or unreadable pipeline file
 
 If an active pipeline's YAML file is deleted, renamed, or becomes unreadable mid-run, the `Stop` hook halts the pipeline and shows a visible `❌` error naming the path and how to recover (restore the file, or run `/pipeline:run <path>` to start over) — it no longer exits silently in this case. Silence is reserved for when no pipeline is active at all.
 
 ## How it works
 
-- **Trigger**: typing `/pipeline:run` fires a `UserPromptSubmit` hook that reads the YAML, initializes pipeline state at `.pipeline/sessions/<session_id>.json`, and injects the first step's instructions into the conversation. The step description is also shown to the user directly (via `systemMessage`), so — for example — an interview step's actual question is visible, not just injected as hidden context (see `docs/adr/0005-json-systemmessage-for-userpromptsubmit-visibility.md`).
+- **Trigger**: typing `/pipeline:run`, or the custom string set in `.pipeline/pipeline.yaml`'s optional `trigger` field (see [Custom trigger](#custom-trigger)), fires a `UserPromptSubmit` hook that reads the YAML, initializes pipeline state at `.pipeline/sessions/<session_id>.json`, and injects the first step's instructions into the conversation. The step description is also shown to the user directly (via `systemMessage`), so — for example — an interview step's actual question is visible, not just injected as hidden context (see `docs/adr/0005-json-systemmessage-for-userpromptsubmit-visibility.md`).
 - **Continuation**: after each Claude response, a `Stop` hook reads the current step from state and injects the next step's instructions — no user input required between steps. Shell steps are run by this hook directly (via `child_process`), with `next`/`next_fail` chosen from the real exit code; Claude never runs or self-reports them.
 - **Advancing agent/interview steps**: Claude advances a completed agent or interview step by running `hooks/pipeline_advance.js --session <id> --step <name> --output "<summary>"` (or `--requirements "<text>"` for the interview entry step). The script rejects the call unless `--step` matches the actually-active step, and computes the next step from `pipeline.yaml` itself — Claude cannot redirect the pipeline to an arbitrary step (see `docs/adr/0007-hook-driven-state-advancement.md`).
 - **Interview steps**: when the current step is `type: interview`, the `Stop` hook exits silently so natural multi-turn conversation can continue. A `PreToolUse` hook blocks file-editing tools until requirements are locked.

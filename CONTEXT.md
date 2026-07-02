@@ -24,7 +24,7 @@ A key-value store within pipeline state used to pass data between steps. Keys fo
 
 ### Trigger
 
-The `/pipeline:run [yaml]` user input that initiates pipeline execution. Detected by the `UserPromptSubmit` hook, which initializes state and transforms the prompt so Claude begins executing step 1 immediately.
+The `/pipeline:run [yaml]` user input that initiates pipeline execution. Detected by the `UserPromptSubmit` hook, which initializes state and transforms the prompt so Claude begins executing step 1 immediately. The default `.pipeline/pipeline.yaml` may also declare a top-level `trigger: <string>` field (sibling to `entry`/`steps`) adding an extra, word-boundary-matched activation string (e.g. `trigger: /mypipe:go` matches `/mypipe:go` or `/mypipe:go ...` but not `/mypipe:gofmt`) on top of `/pipeline:run`, which always keeps working unconditionally regardless of a custom trigger.
 
 ### Plugin
 
