@@ -127,3 +127,25 @@ steps:
     type: agent
     prompt: |
       Review pull request and auto fix found issues
+    next: record_demo
+
+  record_demo:
+    type: agent
+    prompt: |
+      Act as a manual tester. Based on {{user_requirements}} and the changes made in
+      this pipeline run, exercise the actual feature end-to-end in the terminal (like
+      Playwright does for a browser, but for CLI apps) and record proof it works.
+
+      1. Check `command -v asciinema` and `command -v agg`. If either is missing, print
+         install instructions (`brew install asciinema`, `brew install agg`) and STOP -
+         do not run pipeline_advance.js.
+      2. Decide what terminal actions demonstrate the feature working.
+      3. In a scratch dir (mktemp -d, outside the repo), record a real, live session:
+         `asciinema rec session.cast` while performing those actions.
+      4. Convert: `agg session.cast session.gif`.
+      5. Publish: `gh gist create session.gif`, then resolve the raw URL via
+         `gh api gists/<id> --jq '.files[].raw_url'`.
+      6. Fetch the current PR body (`gh pr view --json body -q .body`), append a
+         "## Demo" section with `![demo](<raw_url>)`, write back via `gh pr edit --body`.
+      7. Clean up the scratch dir.
+      8. Only then call pipeline_advance.js.

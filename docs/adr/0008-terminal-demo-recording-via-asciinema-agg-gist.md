@@ -1,0 +1,5 @@
+# Terminal demo recording via asciinema + agg, published as a gist-hosted GIF
+
+The `record_demo` step needs to prove a PR works by exercising the feature end-to-end in the terminal (a terminal analogue of Playwright) and attaching visual proof to the PR.
+
+GitHub has no public API for the drag-and-drop "attach image to PR comment" flow, so the recording can't be attached the way a human would in the web UI. Decision: capture the session with `asciinema rec` (`.cast`), convert it to a GIF with `agg`, then publish the GIF via `gh gist create` and embed the gist's raw URL as a markdown image in the PR description with `gh pr edit --body`. This keeps the recording viewable inline on the PR without committing binary GIF files into the repository, at the cost of requiring `asciinema` and `agg` as external system binaries and a gist as an external hosting dependency. If either binary is missing, the step fails with install instructions rather than auto-installing. Repo-committed GIFs were considered and rejected to avoid unbounded repo growth over time.

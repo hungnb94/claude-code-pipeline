@@ -25,7 +25,9 @@ const {
 
   const toolName = data.tool_name || '';
   if (['Edit', 'Write', 'MultiEdit'].includes(toolName)) {
-    process.stderr.write(`🔒 ${toolName} blocked — requirements not locked yet.\n`);
+    process.stderr.write(
+      `🔒 ${toolName} blocked — requirements not locked yet.\n`
+    );
     process.stdout.write(
       JSON.stringify({
         decision: 'block',

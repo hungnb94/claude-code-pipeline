@@ -98,8 +98,17 @@ const {
 
   const initLine = `Pipeline initialized from '${pipelineFile}'. Entry: '${config.entry}'.`;
   const sharedState = { user_requirements: userRequirements };
-  const stepOutput = buildStepOutput(sessionId, config.entry, entryStep, sharedState);
-  const stepDescription = buildStepDescription(config.entry, entryStep, sharedState);
+  const stepOutput = buildStepOutput(
+    sessionId,
+    config.entry,
+    entryStep,
+    sharedState
+  );
+  const stepDescription = buildStepDescription(
+    config.entry,
+    entryStep,
+    sharedState
+  );
 
   process.stdout.write(
     JSON.stringify({

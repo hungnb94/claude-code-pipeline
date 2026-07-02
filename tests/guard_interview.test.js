@@ -1,4 +1,11 @@
-const { spawnSync, randomUUID, PROJECT_ROOT, setSessionState, cleanupSession, createSessionState } = require('./helpers');
+const {
+  spawnSync,
+  randomUUID,
+  PROJECT_ROOT,
+  setSessionState,
+  cleanupSession,
+  createSessionState,
+} = require('./helpers');
 const path = require('path');
 
 const HOOK = path.join(PROJECT_ROOT, 'hooks/guard_interview.js');
@@ -30,29 +37,38 @@ describe('guard_interview.js', () => {
   });
 
   it('exits 0 when entry step is not type=interview', () => {
-    setSessionState(SESSION_ID, createSessionState({ pipeline: 'examples/pipeline.yaml' }));
+    setSessionState(
+      SESSION_ID,
+      createSessionState({ pipeline: 'examples/pipeline.yaml' })
+    );
     const result = runGuard(SESSION_ID, 'Edit');
     expect(result.status).toBe(0);
     expect(result.stdout).toBe('');
   });
 
   it('exits 0 when requirements are already locked', () => {
-    setSessionState(SESSION_ID, createSessionState({
-      pipeline: 'tests/fixtures/interview-entry.yaml',
-      current_step: 'plan',
-      shared_state: { requirements_locked: 'true' },
-    }));
+    setSessionState(
+      SESSION_ID,
+      createSessionState({
+        pipeline: 'tests/fixtures/interview-entry.yaml',
+        current_step: 'plan',
+        shared_state: { requirements_locked: 'true' },
+      })
+    );
     const result = runGuard(SESSION_ID, 'Edit');
     expect(result.status).toBe(0);
     expect(result.stdout).toBe('');
   });
 
   it('blocks Edit when requirements are not locked', () => {
-    setSessionState(SESSION_ID, createSessionState({
-      pipeline: 'tests/fixtures/interview-entry.yaml',
-      current_step: 'gather_requirements',
-      shared_state: {},
-    }));
+    setSessionState(
+      SESSION_ID,
+      createSessionState({
+        pipeline: 'tests/fixtures/interview-entry.yaml',
+        current_step: 'gather_requirements',
+        shared_state: {},
+      })
+    );
     const result = runGuard(SESSION_ID, 'Edit');
     expect(result.status).toBe(0);
     const out = JSON.parse(result.stdout);
@@ -61,11 +77,14 @@ describe('guard_interview.js', () => {
   });
 
   it('blocks Write when requirements are not locked', () => {
-    setSessionState(SESSION_ID, createSessionState({
-      pipeline: 'tests/fixtures/interview-entry.yaml',
-      current_step: 'gather_requirements',
-      shared_state: {},
-    }));
+    setSessionState(
+      SESSION_ID,
+      createSessionState({
+        pipeline: 'tests/fixtures/interview-entry.yaml',
+        current_step: 'gather_requirements',
+        shared_state: {},
+      })
+    );
     const result = runGuard(SESSION_ID, 'Write');
     expect(result.status).toBe(0);
     const out = JSON.parse(result.stdout);
@@ -73,11 +92,14 @@ describe('guard_interview.js', () => {
   });
 
   it('allows Bash when requirements are not locked', () => {
-    setSessionState(SESSION_ID, createSessionState({
-      pipeline: 'tests/fixtures/interview-entry.yaml',
-      current_step: 'gather_requirements',
-      shared_state: {},
-    }));
+    setSessionState(
+      SESSION_ID,
+      createSessionState({
+        pipeline: 'tests/fixtures/interview-entry.yaml',
+        current_step: 'gather_requirements',
+        shared_state: {},
+      })
+    );
     const result = runGuard(SESSION_ID, 'Bash');
     expect(result.status).toBe(0);
     expect(result.stdout).toBe('');
