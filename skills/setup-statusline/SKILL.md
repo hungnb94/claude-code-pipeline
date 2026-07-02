@@ -39,7 +39,7 @@ Modifies the user's configured status line script to display pipeline state (pip
 5. Append a pipeline state block at the end of the file, adapted to the script's language and conventions. The block must:
    - Be wrapped in `# pipeline-status-block-start` / `# pipeline-status-block-end` markers
    - Read `session_id` and `workspace.project_dir` from the stdin JSON the statusLine command receives
-   - Read `.pipeline/state.json` at `<project_dir>/.pipeline/state.json`, keyed by `session_id`
+   - Read `<project_dir>/.pipeline/sessions/<session_id>.json` first (holds the session state directly); if that file doesn't exist, fall back to `<project_dir>/.pipeline/state.json`, keyed by `session_id`
    - When `mode` is `"pipeline"`, output: `[pipeline-name] ✅ prev-step → 🔄 current-step`
    - Append a retry count `(×N)` in a distinct color when `visit_counts[current_step] > 0`
    - Be completely silent when no pipeline is active
