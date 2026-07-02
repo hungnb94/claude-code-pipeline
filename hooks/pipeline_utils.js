@@ -10,6 +10,11 @@ const PROJECT_ROOT =
     process.exit(1);
   })();
 const STATE_PATH = path.join(PROJECT_ROOT, '.pipeline/state.json');
+const SESSIONS_DIR = path.join(PROJECT_ROOT, '.pipeline/sessions');
+
+function sessionFilePath(sessionId) {
+  return path.join(SESSIONS_DIR, `${sessionId}.json`);
+}
 
 function parseScalar(s) {
   if (s === 'true') {
@@ -131,54 +136,67 @@ function render(template, sharedState) {
   );
 }
 
-function readAllStates() {
+function getSessionState(sessionId) {
+  const ownPath = sessionFilePath(sessionId);
+  if (fs.existsSync(ownPath)) {
+    try {
+      return JSON.parse(fs.readFileSync(ownPath, 'utf8'));
+    } catch {
+      return null;
+    }
+  }
   if (!fs.existsSync(STATE_PATH)) {
-    return {};
+    return null;
   }
   try {
-    return JSON.parse(fs.readFileSync(STATE_PATH, 'utf8'));
+    const legacy = JSON.parse(fs.readFileSync(STATE_PATH, 'utf8'));
+    return legacy[sessionId] || null;
   } catch {
-    return {};
+    return null;
   }
-}
-
-function writeAllStates(states) {
-  fs.mkdirSync(path.dirname(STATE_PATH), { recursive: true });
-  fs.writeFileSync(STATE_PATH, JSON.stringify(states, null, 2));
-}
-
-function getSessionState(sessionId) {
-  return readAllStates()[sessionId] || null;
 }
 
 function setSessionState(sessionId, sessionState) {
-  const all = readAllStates();
-  all[sessionId] = sessionState;
-  writeAllStates(all);
+  fs.mkdirSync(SESSIONS_DIR, { recursive: true });
+  fs.writeFileSync(sessionFilePath(sessionId), JSON.stringify(sessionState, null, 2));
 }
 
 function escapeForPython(s) {
   return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 }
 
-function buildAgentUpdateBlock(sessionId, stepName, next) {
+function pythonLoadSessionLines(sessionId) {
   const sid = escapeForPython(sessionId);
+  const ownPath = escapeForPython(sessionFilePath(sessionId));
+  const legacyPath = escapeForPython(STATE_PATH);
+  return [
+    `import json; from pathlib import Path`,
+    `p = Path('${ownPath}')`,
+    `sess = json.loads(p.read_text()) if p.exists() else json.loads(Path('${legacyPath}').read_text())['${sid}']`,
+  ];
+}
+
+function pythonSaveSessionLines() {
+  return [
+    `p.parent.mkdir(parents=True, exist_ok=True)`,
+    `p.write_text(json.dumps(sess, indent=2))`,
+  ];
+}
+
+function buildAgentUpdateBlock(sessionId, stepName, next) {
   const sname = escapeForPython(stepName);
   const nextSafe = next ? escapeForPython(next) : '';
   const advance = next
     ? `sess['current_step'] = '${nextSafe}'`
     : `sess['mode'] = 'free'`;
   const py = [
-    `import json; from pathlib import Path`,
-    `p = Path('${escapeForPython(STATE_PATH)}')`,
-    `s = json.loads(p.read_text())`,
-    `sess = s['${sid}']`,
+    ...pythonLoadSessionLines(sessionId),
     `sess['completed_steps'].append('${sname}')`,
     `sess.setdefault('visit_counts', {})`,
     `sess['visit_counts']['${sname}'] = sess['visit_counts'].get('${sname}', 0) + 1`,
     `sess['shared_state']['${sname}_output'] = 'REPLACE_WITH_ONE_LINE_SUMMARY'`,
     advance,
-    `p.write_text(json.dumps(s, indent=2))`,
+    ...pythonSaveSessionLines(),
   ].join('\n');
   return (
     `After completing your response, advance the pipeline by running:\n\n` +
@@ -187,23 +205,19 @@ function buildAgentUpdateBlock(sessionId, stepName, next) {
 }
 
 function buildInterviewUpdateBlock(sessionId, stepName, next) {
-  const sid = escapeForPython(sessionId);
   const sname = escapeForPython(stepName);
   const advance = next
     ? `sess['current_step'] = '${escapeForPython(next)}'`
     : `sess['mode'] = 'free'`;
   const py = [
-    `import json; from pathlib import Path`,
-    `p = Path('${escapeForPython(STATE_PATH)}')`,
-    `s = json.loads(p.read_text())`,
-    `sess = s['${sid}']`,
+    ...pythonLoadSessionLines(sessionId),
     `sess['completed_steps'].append('${sname}')`,
     `sess.setdefault('visit_counts', {})`,
     `sess['visit_counts']['${sname}'] = sess['visit_counts'].get('${sname}', 0) + 1`,
     `sess['shared_state']['user_requirements'] = 'REPLACE_WITH_GATHERED_REQUIREMENTS'`,
     `sess['shared_state']['requirements_locked'] = 'true'`,
     advance,
-    `p.write_text(json.dumps(s, indent=2))`,
+    ...pythonSaveSessionLines(),
   ].join('\n');
   return (
     `When you have gathered all requirements, run the following to lock them and continue:\n\n` +
@@ -213,15 +227,11 @@ function buildInterviewUpdateBlock(sessionId, stepName, next) {
 }
 
 function buildShellUpdateBlock(sessionId, stepName, next, nextFail) {
-  const sid = escapeForPython(sessionId);
   const sname = escapeForPython(stepName);
   const nextSafe = next ? escapeForPython(next) : '';
   const nextFailSafe = nextFail ? escapeForPython(nextFail) : '';
   const baseLines = [
-    `import json; from pathlib import Path`,
-    `p = Path('${escapeForPython(STATE_PATH)}')`,
-    `s = json.loads(p.read_text())`,
-    `sess = s['${sid}']`,
+    ...pythonLoadSessionLines(sessionId),
     `sess['completed_steps'].append('${sname}')`,
     `sess.setdefault('visit_counts', {})`,
     `sess['visit_counts']['${sname}'] = sess['visit_counts'].get('${sname}', 0) + 1`,
@@ -235,12 +245,12 @@ function buildShellUpdateBlock(sessionId, stepName, next, nextFail) {
   const pySuccess = [
     ...baseLines,
     successLine,
-    `p.write_text(json.dumps(s, indent=2))`,
+    ...pythonSaveSessionLines(),
   ].join('\n');
   const pyFail = [
     ...baseLines,
     failLine,
-    `p.write_text(json.dumps(s, indent=2))`,
+    ...pythonSaveSessionLines(),
   ].join('\n');
   return (
     `If ALL commands exit 0, run:\n\`\`\`bash\npython3 -c "\n${pySuccess}\n"\n\`\`\`\n\n` +
@@ -341,10 +351,9 @@ function loadActivePipelineContext(data) {
 module.exports = {
   parseYAML,
   render,
-  readAllStates,
-  writeAllStates,
   getSessionState,
   setSessionState,
+  sessionFilePath,
   loadActivePipelineContext,
   buildAgentUpdateBlock,
   buildInterviewUpdateBlock,
