@@ -13,7 +13,7 @@ const STATE_PATH = path.join(PROJECT_ROOT, '.pipeline/state.json');
 const SESSIONS_DIR = path.join(PROJECT_ROOT, '.pipeline/sessions');
 
 function sessionFilePath(sessionId) {
-  return path.join(SESSIONS_DIR, `${sessionId}.json`);
+  return path.join(SESSIONS_DIR, `${path.basename(sessionId)}.json`);
 }
 
 function parseScalar(s) {
