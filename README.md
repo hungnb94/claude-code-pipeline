@@ -147,6 +147,10 @@ A step with no `next` field ends the pipeline when it completes. Alternatively, 
 
 Use `max_visits: N` on any step to halt the pipeline with an error if the step is visited N or more times. Useful for fix→verify→fix cycles where you want a safety ceiling.
 
+### Missing or unreadable pipeline file
+
+If an active pipeline's YAML file is deleted, renamed, or becomes unreadable mid-run, the `Stop` hook halts the pipeline and shows a visible `❌` error naming the path and how to recover (restore the file, or run `/pipeline:run <path>` to start over) — it no longer exits silently in this case. Silence is reserved for when no pipeline is active at all.
+
 ## How it works
 
 - **Trigger**: typing `/pipeline:run` fires a `UserPromptSubmit` hook that reads the YAML, initializes pipeline state at `.pipeline/sessions/<session_id>.json`, and injects the first step's instructions into the conversation. The step description is also shown to the user directly (via `systemMessage`), so — for example — an interview step's actual question is visible, not just injected as hidden context (see `docs/adr/0005-json-systemmessage-for-userpromptsubmit-visibility.md`).
