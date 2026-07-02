@@ -5,7 +5,7 @@
 
 ## Superseded
 
-The progress header was removed entirely. The `/pipeline:setup-statusline` skill (added after this ADR) reads `.pipeline/state.json` directly and renders a persistent, superset equivalent (`[pipeline-name] ✅ prev-step → 🔄 current-step`, plus retry count) in the status line — making the per-step stderr notification redundant. See `CONTEXT.md` (Setup Statusline Skill) for the replacement.
+The progress header was removed entirely. The `/pipeline:setup-statusline` skill (added after this ADR) reads the per-session state file at `.pipeline/sessions/<session_id>.json` (falling back to the legacy `.pipeline/state.json` for pre-migration sessions — see ADR 0006) and renders a persistent, superset equivalent (`[pipeline-name] ✅ prev-step → 🔄 current-step`, plus retry count) in the status line — making the per-step stderr notification redundant. See `CONTEXT.md` (Setup Statusline Skill) for the replacement.
 
 ## Context
 
